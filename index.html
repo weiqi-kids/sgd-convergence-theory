@@ -713,7 +713,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </div>
   <div class="animation-grid single">
-    <div class="animation-container h-360" id="anim-G2-phase-transition">
+    <div class="animation-container h-400" id="anim-G2-phase-transition">
       <h3>臨界相變模擬</h3>
       <div class="d3-canvas"></div>
       <p class="hint">拖動滑桿增大 η，觀察訓練損失的尖銳跳變</p>
@@ -747,6 +747,24 @@ footer a:hover { text-decoration: underline; }
 <section id="open">
   <h2>§10 未解決的關口</h2>
   <p class="intro">以上的理論框架在一維、離散正交、和特定條件下是完整的。但要推廣到現實中的深度學習，還需要突破以下五道障礙。</p>
+
+  <div style="margin-bottom:1.5rem">
+    <h3 style="font-size:var(--text-lg);margin:1rem 0 0.25rem">§10.1 多維有效勢能</h3>
+    <p style="font-size:var(--text-sm);color:var(--text-secondary)">一維中 detailed balance 自動成立，穩態有簡潔的解析公式。但在多維中，噪聲張量 Σ 可能產生旋轉流，此時穩態分佈由 Freidlin-Wentzell 準勢決定——而求解這個準勢是一個 NP-hard 的變分問題。</p>
+
+    <h3 style="font-size:var(--text-lg);margin:1rem 0 0.25rem">§10.2 Jacobian 正交假設</h3>
+    <p style="font-size:var(--text-sm);color:var(--text-secondary)">插值域定理（§4）依賴假設 \(J_i^\top J_j = 0\)（不同資料點的 Jacobian 正交）。移除這個假設需要發展非交換隨機矩陣乘積的理論，目前的數學工具尚不足。</p>
+
+    <h3 style="font-size:var(--text-lg);margin:1rem 0 0.25rem">§10.3 全局軌跡分析</h3>
+    <p style="font-size:var(--text-sm);color:var(--text-secondary)">定理 I 和定理 II 都是局部穩定性分析——它們說明 SGD 在某個盆地附近的行為。但從隨機初始化到最終停在好解盆地的全局路徑分析，仍然是開放問題。</p>
+
+    <h3 style="font-size:var(--text-lg);margin:1rem 0 0.25rem">§10.4 反例四的邊界精確化</h3>
+    <p style="font-size:var(--text-sm);color:var(--text-secondary)">§5.4 的噪聲-泛化反轉何時會發生？\(\text{Corr}(\Sigma, \text{Gap}) > 0\) 的成立條件取決於數據分佈與模型架構的交互作用，目前缺乏一般性的判定準則。</p>
+
+    <h3 style="font-size:var(--text-lg);margin:1rem 0 0.25rem">§10.5 離散與連續的統一</h3>
+    <p style="font-size:var(--text-sm);color:var(--text-secondary)">非插值域（§3）和插值域（§4）使用完全不同的數學工具——前者是連續 SDE，後者是離散 Lyapunov 分析。在 Σ → 0 的極限處，兩套理論如何銜接是一個根本性的數學挑戰。</p>
+  </div>
+
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-H1-research-map">
       <h3>研究地圖</h3>
@@ -779,7 +797,7 @@ const animRegistry = {};
 let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function registerAnim(id, initFn) {
-  animRegistry[id] = { init: initFn, initialized: false, playing: false, rafId: null };
+  animRegistry[id] = { init: initFn, initialized: false, playing: false, rafId: null, loop: null };
 }
 
 function setupAnimObserver() {
@@ -791,6 +809,9 @@ function setupAnimObserver() {
       if (entry.isIntersecting) {
         if (!reg.initialized) { reg.init(entry.target); reg.initialized = true; }
         reg.playing = true;
+        if (reg.loop && !reg.rafId) {
+          reg.rafId = requestAnimationFrame(reg.loop);
+        }
       } else {
         reg.playing = false;
         if (reg.rafId) { cancelAnimationFrame(reg.rafId); reg.rafId = null; }
@@ -1010,6 +1031,7 @@ registerAnim('hero-potential', (container) => {
     }
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['hero-potential'].loop = animate;
   if (!reducedMotion) {
     const reg = animRegistry['hero-potential'];
     reg.playing = true;
@@ -1114,6 +1136,7 @@ registerAnim('B1-sgd-iter', (container) => {
     }
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['B1-sgd-iter'].loop = animate;
   if (!reducedMotion) { animRegistry['B1-sgd-iter'].playing = true; animRegistry['B1-sgd-iter'].rafId = requestAnimationFrame(animate); }
 });
 
@@ -1276,6 +1299,7 @@ registerAnim('C1-1-veff', (container) => {
     if (frame % 2 === 0) draw();
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['C1-1-veff'].loop = animate;
   if (!reducedMotion) { animRegistry['C1-1-veff'].playing = true; animRegistry['C1-1-veff'].rafId = requestAnimationFrame(animate); }
   else draw();
 });
@@ -1672,6 +1696,7 @@ registerAnim('D1-1-kramers', (container) => {
     if (frame % 2 === 0) draw();
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['D1-1-kramers'].loop = animate;
   if (!reducedMotion) { animRegistry['D1-1-kramers'].playing = true; animRegistry['D1-1-kramers'].rafId = requestAnimationFrame(animate); }
   else draw();
 });
@@ -1888,6 +1913,7 @@ registerAnim('D3-1-equal-wells', (container) => {
     frame++; if (frame%2===0) draw();
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['D3-1-equal-wells'].loop = animate;
   if (!reducedMotion) { animRegistry['D3-1-equal-wells'].playing=true; animRegistry['D3-1-equal-wells'].rafId=requestAnimationFrame(animate); }
   else draw();
 });
@@ -1895,21 +1921,47 @@ registerAnim('D3-1-equal-wells', (container) => {
 registerAnim('D3-2-selectivity', (container) => {
   const W = 500, H = 260;
   const svg = createSVG(container, W, H);
-  const g = svg.append('g').attr('transform', 'translate(50, 20)');
+  const g = svg.append('g').attr('transform', 'translate(50, 10)');
 
   let ratioA = 0.5, ratioB = 2.0;
-  const ratioText = g.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle')
+
+  // Title
+  g.append('text').attr('x', 200).attr('y', 15).attr('text-anchor', 'middle')
+    .attr('font-size', 15).attr('font-weight', 600).attr('fill', C.textSec).text('偏好比 p(A)/p(B)');
+
+  // Visual scale bar
+  const barG = g.append('g').attr('transform', 'translate(50, 30)');
+  barG.append('rect').attr('width', 300).attr('height', 16).attr('rx', 8)
+    .attr('fill', C.border);
+  const barFill = barG.append('rect').attr('height', 16).attr('rx', 8)
+    .attr('fill', C.pass);
+  barG.append('text').attr('x', 0).attr('y', 38).attr('font-size', 11).attr('fill', C.pass).text('偏好 A');
+  barG.append('text').attr('x', 300).attr('y', 38).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', C.fail).text('偏好 B');
+  barG.append('line').attr('x1', 150).attr('x2', 150).attr('y1', -3).attr('y2', 22)
+    .attr('stroke', C.muted).attr('stroke-dasharray', '3,3').attr('stroke-width', 1);
+  barG.append('text').attr('x', 150).attr('y', 38).attr('text-anchor', 'middle')
+    .attr('font-size', 10).attr('fill', C.muted).text('1.0（無偏好）');
+
+  const ratioText = g.append('text').attr('x', 200).attr('y', 90).attr('text-anchor', 'middle')
     .attr('font-size', 40).attr('font-weight', 700);
-  const ratioLabel = g.append('text').attr('x', 200).attr('y', 90).attr('text-anchor', 'middle')
-    .attr('font-size', 14).attr('fill', C.textSec).text('p(A)/p(B)');
-  const warnText = g.append('text').attr('x', 200).attr('y', 120).attr('text-anchor', 'middle')
+  const ratioLabel = g.append('text').attr('x', 200).attr('y', 115).attr('text-anchor', 'middle')
+    .attr('font-size', 13).attr('fill', C.textSec);
+  const warnText = g.append('text').attr('x', 200).attr('y', 140).attr('text-anchor', 'middle')
     .attr('font-size', 16).attr('font-weight', 700).attr('fill', C.fail).attr('opacity', 0);
+
+  // Explanation at bottom
+  g.append('text').attr('x', 200).attr('y', 165).attr('text-anchor', 'middle')
+    .attr('font-size', 11).attr('fill', C.muted).text('> 1：SGD 偏好解 A　|　= 1：無偏好（選擇力消失）　|　< 1：SGD 偏好解 B');
 
   function update() {
     const pref = ratioB / ratioA;
     const close = Math.abs(ratioA - ratioB) < 0.3;
-    ratioText.text(pref.toFixed(1)).attr('fill', close ? C.warn : C.pass);
+    ratioText.text(pref.toFixed(1)).attr('fill', close ? C.warn : (pref > 1 ? C.pass : C.fail));
+    ratioLabel.text(`= (Σ_B/H_B) / (Σ_A/H_A) = ${ratioB.toFixed(1)} / ${ratioA.toFixed(1)}`);
     warnText.text('選擇力消失！').attr('opacity', close ? 1 : 0);
+    // Update bar: map ratio to position (log scale around 1)
+    const barPos = Math.max(5, Math.min(295, 150 + Math.log(pref) * 60));
+    barFill.attr('width', barPos).attr('fill', pref > 1.1 ? C.pass : (pref < 0.9 ? C.fail : C.warn));
   }
 
   createSlider(container, {
@@ -1961,6 +2013,7 @@ registerAnim('D4-1-reversal', (container) => {
     frame++; if (frame%2===0) draw();
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['D4-1-reversal'].loop = animate;
   if (!reducedMotion) { animRegistry['D4-1-reversal'].playing=true; animRegistry['D4-1-reversal'].rafId=requestAnimationFrame(animate); }
   else draw();
 });
@@ -2305,6 +2358,7 @@ registerAnim('E3-1-rotation', (container) => {
     }
     reg.rafId = requestAnimationFrame(animate);
   }
+  animRegistry['E3-1-rotation'].loop = animate;
   if (!reducedMotion) { animRegistry['E3-1-rotation'].playing=true; animRegistry['E3-1-rotation'].rafId=requestAnimationFrame(animate); }
 });
 
@@ -2646,35 +2700,36 @@ registerAnim('F2-regime-map', (container) => {
 
 // ========== SECTION G ==========
 registerAnim('G1-dashboard', (container) => {
-  const W = 700, H = 260;
+  const W = 700, H = 220;
   const svg = createSVG(container, W, H);
-  const cardW = 120, cardH = 180, gap = 10;
+  const cardW = 120, cardH = 170, gap = 10;
   const startX = (W - 5*cardW - 4*gap) / 2;
 
-  const predictions = [
-    { id: 'P1', title: 'h_max 預測泛化', desc: '不同 η 訓練的模型，h_max 應與測試誤差正相關', miniChart: 'scatter' },
-    { id: 'P2', title: '臨界相變', desc: 'η ≈ 2/h_max 處存在尖銳相變——訓練損失從 0 跳到非零', miniChart: 'step' },
-    { id: 'P3', title: '噪聲結構 vs 量級', desc: 'SGD 噪聲替換為等量級各向同性高斯，泛化應下降', miniChart: 'bars' },
-    { id: 'P4', title: 'η 單調效應', desc: '插值域中 η 增大 → C 單調下降（直到 SGD 無法收斂）', miniChart: 'curve' },
-    { id: 'P5', title: 'F4 可觀測性', desc: '小數據大模型設定中，過擬合解的 Σ 低於泛化解的 Σ', miniChart: 'bars2' },
-  ];
+  // Detail area as DOM element (not SVG)
+  const detailDiv = document.createElement('div');
+  detailDiv.style.cssText = 'margin-top:0.5rem;padding:0.75rem 1rem;background:var(--bg-overlay);border-radius:0.25rem;font-size:var(--text-sm);color:var(--text-primary);display:none;';
+  container.querySelector('.d3-canvas').after(detailDiv);
 
-  const detailG = svg.append('g').attr('transform', `translate(${startX}, ${cardH + 20})`).attr('opacity', 0);
-  detailG.append('rect').attr('width', W - 2*startX).attr('height', 50).attr('fill', C.surface).attr('stroke', C.border).attr('rx', 4);
-  const detailText = detailG.append('text').attr('x', 10).attr('y', 30).attr('font-size', 12).attr('fill', C.text);
+  const predictions = [
+    { id: 'P1', title: 'h_max 預測泛化', desc: '不同 η 訓練的模型，h_max（最大 per-sample Hessian）應與測試誤差正相關，相關性強於 Hessian 跡或 flatness。', miniChart: 'scatter' },
+    { id: 'P2', title: '臨界相變', desc: '固定模型在 η ≈ 2/h_max 處存在尖銳相變——訓練損失從 0 跳到非零。', miniChart: 'step' },
+    { id: 'P3', title: '噪聲結構 vs 量級', desc: '將 SGD 噪聲替換為等量級的各向同性高斯噪聲，泛化能力應下降。', miniChart: 'bars' },
+    { id: 'P4', title: 'η 單調效應', desc: '插值域中 η 增大 → Jacobian 複雜度 C = ||J||_F/√n 單調下降（直到 SGD 無法收斂）。', miniChart: 'curve' },
+    { id: 'P5', title: 'F4 可觀測性', desc: '小數據大模型設定中，過擬合解的梯度噪聲 Σ 低於泛化良好的解的 Σ。', miniChart: 'bars2' },
+  ];
 
   predictions.forEach((p, i) => {
     const x = startX + i * (cardW + gap);
-    const g = svg.append('g').attr('transform', `translate(${x}, 10)`).style('cursor','pointer');
+    const g = svg.append('g').attr('transform', `translate(${x}, 5)`).style('cursor','pointer');
     g.append('rect').attr('width', cardW).attr('height', cardH).attr('rx', 6)
       .attr('fill', C.surface).attr('stroke', C.border);
-    g.append('text').attr('x', cardW/2).attr('y', 20).attr('text-anchor','middle')
-      .attr('font-size', 13).attr('font-weight', 700).attr('fill', C.info).text(p.id);
-    g.append('text').attr('x', cardW/2).attr('y', 38).attr('text-anchor','middle')
+    g.append('text').attr('x', cardW/2).attr('y', 22).attr('text-anchor','middle')
+      .attr('font-size', 14).attr('font-weight', 700).attr('fill', C.info).text(p.id);
+    g.append('text').attr('x', cardW/2).attr('y', 42).attr('text-anchor','middle')
       .attr('font-size', 10).attr('fill', C.textSec).text(p.title);
 
     // Mini chart
-    const mg = g.append('g').attr('transform', 'translate(15, 50)');
+    const mg = g.append('g').attr('transform', 'translate(15, 55)');
     const mw = cardW - 30, mh = 80;
     if (p.miniChart === 'scatter') {
       for (let j = 0; j < 8; j++) {
@@ -2686,19 +2741,23 @@ registerAnim('G1-dashboard', (container) => {
         .attr('fill','none').attr('stroke', C.fail).attr('stroke-width', 2);
     } else if (p.miniChart === 'bars') {
       mg.append('rect').attr('x',10).attr('y',30).attr('width',25).attr('height',50).attr('fill', C.pass).attr('rx',2);
+      mg.append('text').attr('x',22).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('結構化');
       mg.append('rect').attr('x',55).attr('y',50).attr('width',25).attr('height',30).attr('fill', C.fail).attr('rx',2);
+      mg.append('text').attr('x',67).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('各向同性');
     } else if (p.miniChart === 'curve') {
-      const pts = d3.range(0,1.01,0.1).map(x => [x*mw, mh*(1-Math.exp(-3*x))]);
-      mg.append('path').attr('d', d3.line()(pts.map(d => [d[0], mh-d[1]])))
+      const pts = d3.range(0,1.01,0.1).map(x => [x*mw, mh - mh*(1-Math.exp(-3*x))]);
+      mg.append('path').attr('d', d3.line()(pts))
         .attr('fill','none').attr('stroke', C.pass).attr('stroke-width', 2);
     } else {
       mg.append('rect').attr('x',10).attr('y',50).attr('width',25).attr('height',30).attr('fill', C.fail).attr('rx',2);
+      mg.append('text').attr('x',22).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('過擬合');
       mg.append('rect').attr('x',55).attr('y',20).attr('width',25).attr('height',60).attr('fill', C.pass).attr('rx',2);
+      mg.append('text').attr('x',67).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('泛化');
     }
 
     g.on('click', () => {
-      detailG.attr('opacity', 1);
-      detailText.text(`${p.id}: ${p.desc}`);
+      detailDiv.style.display = 'block';
+      detailDiv.textContent = `${p.id}：${p.desc}`;
     });
   });
 });
