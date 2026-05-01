@@ -1069,13 +1069,13 @@ registerAnim('B1-sgd-iter', (container) => {
 
   // Axes
   g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(6))
-    .selectAll('text').attr('font-size', 12);
+    .selectAll('text').attr('font-size', 17);
   g.append('g').call(d3.axisLeft(yS).ticks(4))
-    .selectAll('text').attr('font-size', 12);
+    .selectAll('text').attr('font-size', 17);
   g.append('text').attr('x', pw/2).attr('y', ph + 35).attr('text-anchor', 'middle')
-    .attr('font-size', 13).attr('fill', C.textSec).text('θ₁');
+    .attr('font-size', 17).attr('fill', C.textSec).text('θ₁');
   g.append('text').attr('x', -35).attr('y', ph/2).attr('text-anchor', 'middle')
-    .attr('font-size', 13).attr('fill', C.textSec).attr('transform', `rotate(-90,-35,${ph/2})`).text('θ₂');
+    .attr('font-size', 17).attr('fill', C.textSec).attr('transform', `rotate(-90,-35,${ph/2})`).text('θ₂');
 
   // Samples: 5 data points with different gradient directions
   const samples = [
@@ -1097,9 +1097,9 @@ registerAnim('B1-sgd-iter', (container) => {
   // Legend
   const legend = g.append('g').attr('transform', `translate(${pw - 100}, 5)`);
   legend.append('line').attr('x1', 0).attr('x2', 20).attr('y1', 0).attr('y2', 0).attr('stroke', C.info).attr('stroke-width', 2);
-  legend.append('text').attr('x', 25).attr('y', 4).attr('font-size', 12).attr('fill', C.textSec).text('GD');
+  legend.append('text').attr('x', 25).attr('y', 4).attr('font-size', 17).attr('fill', C.textSec).text('GD');
   legend.append('line').attr('x1', 0).attr('x2', 20).attr('y1', 18).attr('y2', 18).attr('stroke', C.fail).attr('stroke-width', 2);
-  legend.append('text').attr('x', 25).attr('y', 22).attr('font-size', 12).attr('fill', C.textSec).text('SGD');
+  legend.append('text').attr('x', 25).attr('y', 22).attr('font-size', 17).attr('fill', C.textSec).text('SGD');
 
   function reset() {
     gdPos = [2.5, 1.2]; sgdPos = [2.5, 1.2];
@@ -1146,18 +1146,18 @@ registerAnim('B2-good-bad', (container) => {
 
   // G1: Σ/H bar chart
   const g1 = svg.append('g').attr('transform', 'translate(20, 20)');
-  g1.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 13).attr('font-weight', 600).text('G1: 低噪聲比 Σ/H');
+  g1.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 17).attr('font-weight', 600).text('G1: 低噪聲比 Σ/H');
   const barH = 60, barW = 80;
   [{label:'A', val:0.3, color:C.pass}, {label:'B', val:1.8, color:C.fail}].forEach((d, i) => {
     const bh = d.val / 2 * barH;
     g1.append('rect').attr('x', 30 + i*50).attr('y', 20 + barH - bh).attr('width', 35).attr('height', bh)
       .attr('fill', d.color).attr('rx', 3);
-    g1.append('text').attr('x', 47 + i*50).attr('y', 95).attr('text-anchor', 'middle').attr('font-size', 11).text(d.label);
+    g1.append('text').attr('x', 47 + i*50).attr('y', 95).attr('text-anchor', 'middle').attr('font-size', 17).text(d.label);
   });
 
   // G2: Sensitivity heatmap
   const g2 = svg.append('g').attr('transform', 'translate(250, 20)');
-  g2.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 13).attr('font-weight', 600).text('G2: 低 Jacobian 複雜度');
+  g2.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 17).attr('font-weight', 600).text('G2: 低 Jacobian 複雜度');
   const heatData = [[0.2,0.3,0.2,0.25,0.3],[0.8,0.3,1.2,0.5,0.9]];
   const heatColor = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, 1.5]);
   heatData.forEach((row, ri) => {
@@ -1165,34 +1165,34 @@ registerAnim('B2-good-bad', (container) => {
       g2.append('rect').attr('x', 20 + ci*22).attr('y', 15 + ri*35).attr('width', 20).attr('height', 25)
         .attr('fill', heatColor(v)).attr('rx', 2);
     });
-    g2.append('text').attr('x', 140).attr('y', 32 + ri*35).attr('font-size', 11).attr('fill', ri===0?C.pass:C.fail).text(ri===0?'簡單':'複雜');
+    g2.append('text').attr('x', 140).attr('y', 32 + ri*35).attr('font-size', 17).attr('fill', ri===0?C.pass:C.fail).text(ri===0?'簡單':'複雜');
   });
 
   // G3: LOO stability
   const g3 = svg.append('g').attr('transform', 'translate(20, 180)');
-  g3.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 13).attr('font-weight', 600).text('G3: 穩定解（LOO）');
+  g3.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 17).attr('font-weight', 600).text('G3: 穩定解（LOO）');
   [{label:'A', val:0.1, color:C.pass}, {label:'B', val:0.8, color:C.fail}].forEach((d, i) => {
     const bh = d.val * 70;
     g3.append('rect').attr('x', 30 + i*50).attr('y', 20 + 70 - bh).attr('width', 35).attr('height', bh)
       .attr('fill', d.color).attr('rx', 3);
-    g3.append('text').attr('x', 47 + i*50).attr('y', 105).attr('text-anchor', 'middle').attr('font-size', 11).text(d.label);
+    g3.append('text').attr('x', 47 + i*50).attr('y', 105).attr('text-anchor', 'middle').attr('font-size', 17).text(d.label);
   });
-  g3.append('text').attr('x', 100).attr('y', 118).attr('text-anchor', 'middle').attr('font-size', 10).attr('fill', C.muted).text('偏移量');
+  g3.append('text').attr('x', 100).attr('y', 118).attr('text-anchor', 'middle').attr('font-size', 17).attr('fill', C.muted).text('偏移量');
 
   // G4: Generalization gap
   const g4 = svg.append('g').attr('transform', 'translate(250, 180)');
-  g4.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 13).attr('font-weight', 600).text('G4: 泛化解');
+  g4.append('text').attr('x', 100).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 17).attr('font-weight', 600).text('G4: 泛化解');
   [{label:'A', train:0.3, test:0.35}, {label:'B', train:0.3, test:0.9}].forEach((d, i) => {
     g4.append('rect').attr('x', 20+i*80).attr('y', 20+70-d.train*70).attr('width', 20).attr('height', d.train*70)
       .attr('fill', C.info).attr('rx', 2);
     g4.append('rect').attr('x', 45+i*80).attr('y', 20+70-d.test*70).attr('width', 20).attr('height', d.test*70)
       .attr('fill', i===0?C.pass:C.fail).attr('rx', 2);
-    g4.append('text').attr('x', 42+i*80).attr('y', 105).attr('text-anchor', 'middle').attr('font-size', 11).text(d.label);
+    g4.append('text').attr('x', 42+i*80).attr('y', 105).attr('text-anchor', 'middle').attr('font-size', 17).text(d.label);
   });
 
   // Arrow connections at bottom
   const arrowG = svg.append('g').attr('transform', 'translate(0, 320)');
-  arrowG.append('text').attr('x', 250).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 12).attr('fill', C.textSec)
+  arrowG.append('text').attr('x', 250).attr('y', 0).attr('text-anchor', 'middle').attr('font-size', 17).attr('fill', C.textSec)
     .text('SGD 偏好 G1/G2 → G1→G3→G4，G2→G4');
 });
 
@@ -1288,7 +1288,7 @@ registerAnim('C1-1-veff', (container) => {
     // Value box
     ctx.fillStyle = C.warn; ctx.font = 'bold 18px sans-serif';
     ctx.fillText(`p(A)/p(B) ≈ ${burnin > 100 ? ratio : '...'}`, W - 115, margin.top + ph + 80);
-    ctx.fillStyle = C.muted; ctx.font = '11px sans-serif';
+    ctx.fillStyle = C.muted; ctx.font = '12px sans-serif';
     ctx.fillText(`理論值: ${(sigmaFn(2)/sigmaFn(-2)).toFixed(1)}`, W - 115, margin.top + ph + 100);
   }
 
@@ -1314,7 +1314,7 @@ registerAnim('C1-2-loo', (container) => {
   [{ label: '解 A（低 Σ）', color: C.pass, shift: 0.02, yOff: margin.top },
    { label: '解 B（高 Σ）', color: C.fail, shift: 0.15, yOff: margin.top + halfH + 30 }].forEach(config => {
     const g = svg.append('g').attr('transform', `translate(${margin.left},${config.yOff})`);
-    g.append('text').attr('x', 0).attr('y', -5).attr('font-size', 13).attr('font-weight', 600).attr('fill', config.color).text(config.label);
+    g.append('text').attr('x', 0).attr('y', -5).attr('font-size', 17).attr('font-weight', 600).attr('fill', config.color).text(config.label);
 
     const n = 8;
     const xS = d3.scaleLinear().domain([0, 7]).range([0, pw]);
@@ -1350,7 +1350,7 @@ registerAnim('C1-2-loo', (container) => {
     // Gap label
     const gapVal = config.shift < 0.1 ? '小' : '大';
     g.append('text').attr('x', pw).attr('y', halfH + 15).attr('text-anchor', 'end')
-      .attr('font-size', 11).attr('fill', config.color).text(`Gap ≈ Σ/(H(n-1)) → ${gapVal}`);
+      .attr('font-size', 17).attr('fill', config.color).text(`Gap ≈ Σ/(H(n-1)) → ${gapVal}`);
   });
 });
 
@@ -1408,7 +1408,7 @@ registerAnim('C1-3-fpe', (container) => {
   const stepsG = svg.append('g').attr('transform', `translate(${margin.left + pw + 15}, ${margin.top})`);
   const stepTexts = steps.map((s, i) => {
     return stepsG.append('text').attr('x', 0).attr('y', i * (ph / steps.length) + 12)
-      .attr('font-size', 10).attr('fill', C.muted).text(`${i+1}. ${s}`);
+      .attr('font-size', 17).attr('fill', C.muted).text(`${i+1}. ${s}`);
   });
 
   let currentFrame = 0;
@@ -1465,7 +1465,7 @@ registerAnim('C2-1-eta-screening', (container) => {
   // Zero line
   g.append('line').attr('x1', 0).attr('x2', pw).attr('y1', yS(0)).attr('y2', yS(0))
     .attr('stroke', C.fail).attr('stroke-dasharray', '5,5').attr('stroke-width', 1.5);
-  g.append('text').attr('x', pw + 5).attr('y', yS(0) + 4).attr('font-size', 11).attr('fill', C.fail).text('λ = 0');
+  g.append('text').attr('x', pw + 5).attr('y', yS(0) + 4).attr('font-size', 12).attr('fill', C.fail).text('λ = 0');
 
   // Background regions
   const stableRect = g.append('rect').attr('y', yS(0)).attr('height', ph - yS(0))
@@ -1523,7 +1523,7 @@ registerAnim('C2-2-jacobian', (container) => {
    {label:'複雜網路', x: 270, color: C.fail, hs: [1,2,50,3,45], c: 20.1}].forEach(net => {
     const g = svg.append('g').attr('transform', `translate(${net.x}, 20)`);
     g.append('text').attr('x', 90).attr('y', 0).attr('text-anchor', 'middle')
-      .attr('font-size', 14).attr('font-weight', 600).attr('fill', net.color).text(net.label);
+      .attr('font-size', 20).attr('font-weight', 600).attr('fill', net.color).text(net.label);
 
     // Network icon (simple rectangles)
     const layers = net.hs.length < 10 ? 3 : 5;
@@ -1543,20 +1543,20 @@ registerAnim('C2-2-jacobian', (container) => {
       g.append('polygon')
         .attr('points', `${30+len},${y-3} ${30+len+6},${y} ${30+len},${y+3}`)
         .attr('fill', net.color);
-      g.append('text').attr('x', 10).attr('y', y + 4).attr('font-size', 10).attr('text-anchor', 'middle')
+      g.append('text').attr('x', 10).attr('y', y + 4).attr('font-size', 17).attr('text-anchor', 'middle')
         .attr('fill', C.muted).text(`x${i+1}`);
     });
 
     // C value
     g.append('text').attr('x', 90).attr('y', 220).attr('text-anchor', 'middle')
-      .attr('font-size', 13).attr('fill', net.color).text(`C = ${net.c.toFixed(1)}`);
+      .attr('font-size', 17).attr('fill', net.color).text(`C = ${net.c.toFixed(1)}`);
 
     // Rademacher bar
     const barH = net.c / 25 * 60;
     g.append('rect').attr('x', 60).attr('y', 235 + 60 - barH).attr('width', 60).attr('height', barH)
       .attr('fill', net.color).attr('opacity', 0.5).attr('rx', 3);
     g.append('text').attr('x', 90).attr('y', 310).attr('text-anchor', 'middle')
-      .attr('font-size', 11).attr('fill', C.muted).text('Rademacher');
+      .attr('font-size', 17).attr('fill', C.muted).text('Rademacher');
   });
 });
 
@@ -1585,7 +1585,7 @@ registerAnim('C2-3-closed-loop', (container) => {
     g.append('text').attr('x', stepW/2).attr('y', 35).attr('text-anchor', 'middle')
       .attr('font-size', 24).text(step.icon);
     g.append('text').attr('x', stepW/2).attr('y', 60).attr('text-anchor', 'middle')
-      .attr('font-size', 11).attr('fill', step.color).attr('font-weight', 600).text(step.label);
+      .attr('font-size', 17).attr('fill', step.color).attr('font-weight', 600).text(step.label);
 
     // Arrow to next
     if (i < steps.length - 1) {
@@ -1660,7 +1660,7 @@ registerAnim('D1-1-kramers', (container) => {
     }); ctx.stroke();
 
     // Labels
-    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = C.pass; ctx.font = 'bold 17px sans-serif';
     ctx.fillText('A (好)', xS(-2.2), yS(doubleWell(-2, a, b, c)) + 20);
     ctx.fillStyle = C.fail;
     ctx.fillText('B (壞)', xS(1.5), yS(doubleWell(2, a, b, c)) + 20);
@@ -1679,11 +1679,11 @@ registerAnim('D1-1-kramers', (container) => {
 
     // Info
     const kramersTime = tau > 0.001 ? (1/tau) * Math.exp(2/tau) : Infinity;
-    ctx.fillStyle = C.textSec; ctx.font = '12px sans-serif';
+    ctx.fillStyle = C.textSec; ctx.font = '17px sans-serif';
     ctx.fillText(`步數: ${steps}`, W - 95, margin.top + 20);
     ctx.fillText(`Kramers 時間:`, W - 95, margin.top + 40);
     const timeStr = kramersTime > 1e10 ? kramersTime.toExponential(1) : kramersTime.toFixed(0);
-    ctx.font = 'bold 14px sans-serif';
+    ctx.font = 'bold 20px sans-serif';
     ctx.fillStyle = kramersTime > 1e6 ? C.fail : C.pass;
     ctx.fillText(`≈ ${timeStr}`, W - 95, margin.top + 60);
   }
@@ -1711,9 +1711,9 @@ registerAnim('D1-2-mixing', (container) => {
   const yS = d3.scaleLog().domain([1, 1e12]).range([ph, 0]);
 
   // Axes
-  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5, '.3f')).selectAll('text').attr('font-size', 11);
-  g.append('g').call(d3.axisLeft(yS).ticks(6, '.0e')).selectAll('text').attr('font-size', 11);
-  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor', 'middle').attr('font-size', 13).attr('fill', C.textSec).text('η');
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5, '.3f')).selectAll('text').attr('font-size', 17);
+  g.append('g').call(d3.axisLeft(yS).ticks(6, '.0e')).selectAll('text').attr('font-size', 17);
+  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor', 'middle').attr('font-size', 17).attr('fill', C.textSec).text('η');
 
   // Mixing time curve τ_mix ~ exp(C/η)
   const etaVals = d3.range(0.005, 1, 0.005);
@@ -1721,14 +1721,14 @@ registerAnim('D1-2-mixing', (container) => {
   const mixData = etaVals.map(e => [e, Math.exp(2/e) / e]);
   g.append('path').datum(mixData).attr('d', mixLine).attr('fill', 'none').attr('stroke', C.fail).attr('stroke-width', 2);
   g.append('text').attr('x', xS(0.3)).attr('y', yS(mixData.find(d => Math.abs(d[0]-0.3)<0.01)?.[1] || 1e3) - 10)
-    .attr('font-size', 11).attr('fill', C.fail).text('τ_mix');
+    .attr('font-size', 17).attr('fill', C.fail).text('τ_mix');
 
   // Training budget line (draggable)
   let Ttrain = 1e5;
   const trainLine = g.append('line').attr('x1', 0).attr('x2', pw)
     .attr('y1', yS(Ttrain)).attr('y2', yS(Ttrain)).attr('stroke', C.info).attr('stroke-width', 2);
   const trainLabel = g.append('text').attr('x', pw - 5).attr('text-anchor', 'end')
-    .attr('font-size', 11).attr('fill', C.info);
+    .attr('font-size', 17).attr('fill', C.info);
 
   // Danger zone
   const dangerRect = g.append('rect').attr('fill', C.fail).attr('opacity', 0.08);
@@ -1769,10 +1769,10 @@ registerAnim('D2-1-diverge', (container) => {
   const xS = d3.scaleLinear().domain([0, maxT]).range([0, pw]);
   const yS = d3.scaleLinear().domain([-5, 5]).range([ph, 0]);
 
-  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size', 12);
-  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size', 12);
-  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor', 'middle').attr('font-size', 13).attr('fill', C.textSec).text('t');
-  g.append('text').attr('x', -35).attr('y', ph/2).attr('text-anchor', 'middle').attr('font-size', 13).attr('fill', C.textSec)
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size', 17);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size', 17);
+  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor', 'middle').attr('font-size', 17).attr('fill', C.textSec).text('t');
+  g.append('text').attr('x', -35).attr('y', ph/2).attr('text-anchor', 'middle').attr('font-size', 17).attr('fill', C.textSec)
     .attr('transform', `rotate(-90,-35,${ph/2})`).text('θ_t');
 
   // Critical line marker
@@ -1807,7 +1807,7 @@ registerAnim('D2-1-diverge', (container) => {
       g.selectAll('.diverge-label').remove();
       g.append('text').attr('class', 'diverge-label')
         .attr('x', xS(lastPt[0])).attr('y', lastPt[1] > 0 ? 10 : ph - 5)
-        .attr('font-size', 14).attr('fill', C.fail).attr('font-weight', 700).text('→ ∞');
+        .attr('font-size', 20).attr('fill', C.fail).attr('font-weight', 700).text('→ ∞');
     } else {
       g.selectAll('.diverge-label').remove();
     }
@@ -1830,9 +1830,9 @@ registerAnim('D2-2-lyapunov-diverge', (container) => {
   const xS = d3.scaleLinear().domain([0, 0.25]).range([0, pw]);
   const yS = d3.scaleLinear().domain([-0.3, 0.3]).range([ph, 0]);
 
-  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size', 12);
-  g.append('g').call(d3.axisLeft(yS).ticks(5).tickFormat(d3.format('.2f'))).selectAll('text').attr('font-size', 12);
-  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor','middle').attr('font-size', 13).attr('fill', C.textSec).text('η');
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size', 17);
+  g.append('g').call(d3.axisLeft(yS).ticks(5).tickFormat(d3.format('.2f'))).selectAll('text').attr('font-size', 17);
+  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor','middle').attr('font-size', 17).attr('fill', C.textSec).text('η');
 
   // Zero line
   g.append('line').attr('x1',0).attr('x2',pw).attr('y1',yS(0)).attr('y2',yS(0)).attr('stroke', C.muted).attr('stroke-dasharray','3,3');
@@ -1851,7 +1851,7 @@ registerAnim('D2-2-lyapunov-diverge', (container) => {
   const zeroCross = 2/18;
   g.append('circle').attr('cx', xS(zeroCross)).attr('cy', yS(0)).attr('r', 5).attr('fill', C.fail);
   g.append('text').attr('x', xS(zeroCross)).attr('y', yS(0)+18).attr('text-anchor','middle')
-    .attr('font-size', 10).attr('fill', C.fail).text(`η_c ≈ ${zeroCross.toFixed(3)}`);
+    .attr('font-size', 17).attr('fill', C.fail).text(`η_c ≈ ${zeroCross.toFixed(3)}`);
 
   // Regions
   g.append('rect').attr('x', xS(zeroCross)).attr('y', 0).attr('width', pw - xS(zeroCross)).attr('height', ph)
@@ -1889,14 +1889,14 @@ registerAnim('D3-1-equal-wells', (container) => {
   function draw() {
     ctx.clearRect(0, 0, cw, ch);
     // Title
-    ctx.fillStyle = C.textSec; ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = C.textSec; ctx.font = 'bold 17px sans-serif';
     ctx.fillText('V_eff 等深 → Σ_A/H_A = Σ_B/H_B', margin.left, 15);
     // Curve
     ctx.beginPath(); ctx.strokeStyle = C.text; ctx.lineWidth = 2;
     thetaVals.forEach((t, i) => { const x = xS(t), y = yS(vVals[i]); i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
     ctx.stroke();
     // Labels
-    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif'; ctx.fillText('A', xS(-2)-4, yS(doubleWell(-2,a,b,c))+20);
+    ctx.fillStyle = C.pass; ctx.font = 'bold 17px sans-serif'; ctx.fillText('A', xS(-2)-4, yS(doubleWell(-2,a,b,c))+20);
     ctx.fillStyle = C.fail; ctx.fillText('B', xS(2)-4, yS(doubleWell(2,a,b,c))+20);
     // Particles
     for (let i=0; i<N; i++) { particles[i] = emStep(particles[i], Vprime, sigmaFn, tau, 0.01); particles[i] = Math.max(-3.4,Math.min(3.4,particles[i])); }
@@ -1904,7 +1904,7 @@ registerAnim('D3-1-equal-wells', (container) => {
     particles.forEach(p => { ctx.beginPath(); ctx.arc(xS(p), yS(doubleWell(p,a,b,c)), 3, 0, Math.PI*2); ctx.fill(); });
     // Count
     const cA = particles.filter(p=>p<0).length, cB = N-cA;
-    ctx.fillStyle = C.warn; ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = C.warn; ctx.font = 'bold 20px sans-serif';
     ctx.fillText(`A: ${cA}  B: ${cB}  ≈ 50/50`, W/2-60, H-10);
   }
   let frame=0;
@@ -1927,7 +1927,7 @@ registerAnim('D3-2-selectivity', (container) => {
 
   // Title
   g.append('text').attr('x', 200).attr('y', 15).attr('text-anchor', 'middle')
-    .attr('font-size', 15).attr('font-weight', 600).attr('fill', C.textSec).text('偏好比 p(A)/p(B)');
+    .attr('font-size', 20).attr('font-weight', 600).attr('fill', C.textSec).text('偏好比 p(A)/p(B)');
 
   // Visual scale bar
   const barG = g.append('g').attr('transform', 'translate(50, 30)');
@@ -1935,23 +1935,23 @@ registerAnim('D3-2-selectivity', (container) => {
     .attr('fill', C.border);
   const barFill = barG.append('rect').attr('height', 14).attr('rx', 7)
     .attr('fill', C.pass);
-  barG.append('text').attr('x', 0).attr('y', -5).attr('font-size', 11).attr('fill', C.pass).text('← 偏好 A');
-  barG.append('text').attr('x', 300).attr('y', -5).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', C.fail).text('偏好 B →');
+  barG.append('text').attr('x', 0).attr('y', -5).attr('font-size', 17).attr('fill', C.pass).text('← 偏好 A');
+  barG.append('text').attr('x', 300).attr('y', -5).attr('text-anchor', 'end').attr('font-size', 17).attr('fill', C.fail).text('偏好 B →');
   barG.append('line').attr('x1', 150).attr('x2', 150).attr('y1', -2).attr('y2', 18)
     .attr('stroke', C.text).attr('stroke-width', 1.5);
   barG.append('text').attr('x', 150).attr('y', 30).attr('text-anchor', 'middle')
-    .attr('font-size', 10).attr('fill', C.muted).text('1.0（無偏好）');
+    .attr('font-size', 17).attr('fill', C.muted).text('1.0（無偏好）');
 
   const ratioText = g.append('text').attr('x', 200).attr('y', 90).attr('text-anchor', 'middle')
     .attr('font-size', 40).attr('font-weight', 700);
   const ratioLabel = g.append('text').attr('x', 200).attr('y', 115).attr('text-anchor', 'middle')
-    .attr('font-size', 13).attr('fill', C.textSec);
+    .attr('font-size', 17).attr('fill', C.textSec);
   const warnText = g.append('text').attr('x', 200).attr('y', 140).attr('text-anchor', 'middle')
-    .attr('font-size', 16).attr('font-weight', 700).attr('fill', C.fail).attr('opacity', 0);
+    .attr('font-size', 20).attr('font-weight', 700).attr('fill', C.fail).attr('opacity', 0);
 
   // Explanation at bottom
   g.append('text').attr('x', 200).attr('y', 165).attr('text-anchor', 'middle')
-    .attr('font-size', 11).attr('fill', C.muted).text('> 1：SGD 偏好解 A　|　= 1：無偏好（選擇力消失）　|　< 1：SGD 偏好解 B');
+    .attr('font-size', 17).attr('fill', C.muted).text('> 1：SGD 偏好解 A　|　= 1：無偏好（選擇力消失）　|　< 1：SGD 偏好解 B');
 
   function update() {
     const pref = ratioB / ratioA;
@@ -1995,7 +1995,7 @@ registerAnim('D4-1-reversal', (container) => {
     ctx.beginPath(); ctx.strokeStyle = C.text; ctx.lineWidth = 2;
     thetaVals.forEach((t, i) => { const x=xS(t), y=yS(vVals[i]); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }); ctx.stroke();
     // Well labels with contradiction
-    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = C.pass; ctx.font = 'bold 17px sans-serif';
     ctx.fillText('A ✓好 (Σ=20)', xS(-2.8), yS(doubleWell(-2,a,b,c))+20);
     ctx.fillStyle = C.fail;
     ctx.fillText('B ✗壞 (Σ=1)', xS(1.2), yS(doubleWell(2,a,b,c))+20);
@@ -2004,7 +2004,7 @@ registerAnim('D4-1-reversal', (container) => {
     ctx.fillStyle = C.info;
     particles.forEach(p => { ctx.beginPath(); ctx.arc(xS(p), yS(doubleWell(p,a,b,c)), 3, 0, Math.PI*2); ctx.fill(); });
     const cA=particles.filter(p=>p<0).length, cB=N-cA;
-    ctx.fillStyle = C.fail; ctx.font = 'bold 14px sans-serif';
+    ctx.fillStyle = C.fail; ctx.font = 'bold 20px sans-serif';
     ctx.fillText(`多數粒子在壞井 B: ${cB}/${N}`, W/2-80, H-10);
   }
   let frame=0;
@@ -2029,9 +2029,9 @@ registerAnim('D4-2-diversity', (container) => {
     angles: [85, 88, 92, 95, 82, 90]}].forEach(config => {
     const g = svg.append('g').attr('transform', `translate(${config.x}, 20)`);
     g.append('text').attr('x', 100).attr('y', 0).attr('text-anchor','middle')
-      .attr('font-size', 14).attr('font-weight', 600).attr('fill', config.color).text(config.label);
+      .attr('font-size', 20).attr('font-weight', 600).attr('fill', config.color).text(config.label);
     g.append('text').attr('x', 100).attr('y', 18).attr('text-anchor','middle')
-      .attr('font-size', 11).attr('fill', C.muted).text(config.subtitle);
+      .attr('font-size', 17).attr('fill', C.muted).text(config.subtitle);
 
     const cx = 100, cy = 130, r = 70;
     // Data points around center
@@ -2055,12 +2055,12 @@ registerAnim('D4-2-diversity', (container) => {
     // Σ value
     const sigma = config.angles.length > 3 ? (config.color === C.pass ? 20 : 1) : 1;
     g.append('text').attr('x', 100).attr('y', 230).attr('text-anchor','middle')
-      .attr('font-size', 16).attr('font-weight', 700).attr('fill', config.color).text(`Σ = ${sigma}`);
+      .attr('font-size', 20).attr('font-weight', 700).attr('fill', config.color).text(`Σ = ${sigma}`);
   });
 
   // Warning at bottom
   svg.append('text').attr('x', 250).attr('y', 290).attr('text-anchor','middle')
-    .attr('font-size', 15).attr('font-weight', 700).attr('fill', C.fail)
+    .attr('font-size', 20).attr('font-weight', 700).attr('fill', C.fail)
     .text('SGD 的低噪聲偏好 ≠ 泛化偏好');
 });
 
@@ -2078,8 +2078,8 @@ registerAnim('E1-1-reparam', (container) => {
   const gL = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
   const gR = svg.append('g').attr('transform', `translate(${margin.left + halfW + 30},${margin.top})`);
 
-  gL.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle').attr('font-size', 13).attr('fill', C.textSec).text('θ 空間');
-  gR.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle').attr('font-size', 13).attr('fill', C.textSec).text('ϕ 空間');
+  gL.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle').attr('font-size', 17).attr('fill', C.textSec).text('θ 空間');
+  gR.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle').attr('font-size', 17).attr('fill', C.textSec).text('ϕ 空間');
 
   const xS = d3.scaleLinear().domain([-3, 3]).range([0, halfW]);
   const yS = d3.scaleLinear().domain([0, 10]).range([ph, 0]);
@@ -2089,20 +2089,20 @@ registerAnim('E1-1-reparam', (container) => {
   // Original curve (static)
   const origData = tVals.map(t => [t, t*t]);
   gL.append('path').datum(origData).attr('d', lineGen).attr('fill','none').attr('stroke', C.text).attr('stroke-width', 2);
-  const hText = gL.append('text').attr('x', halfW-5).attr('y', 20).attr('text-anchor','end').attr('font-size', 12);
-  const sText = gL.append('text').attr('x', halfW-5).attr('y', 38).attr('text-anchor','end').attr('font-size', 12);
+  const hText = gL.append('text').attr('x', halfW-5).attr('y', 20).attr('text-anchor','end').attr('font-size', 17);
+  const sText = gL.append('text').attr('x', halfW-5).attr('y', 38).attr('text-anchor','end').attr('font-size', 17);
 
   // Transformed curve (dynamic)
   const transPath = gR.append('path').attr('fill','none').attr('stroke', C.text).attr('stroke-width', 2);
-  const htText = gR.append('text').attr('x', halfW-5).attr('y', 20).attr('text-anchor','end').attr('font-size', 12);
-  const stText = gR.append('text').attr('x', halfW-5).attr('y', 38).attr('text-anchor','end').attr('font-size', 12);
+  const htText = gR.append('text').attr('x', halfW-5).attr('y', 20).attr('text-anchor','end').attr('font-size', 17);
+  const stText = gR.append('text').attr('x', halfW-5).attr('y', 38).attr('text-anchor','end').attr('font-size', 17);
 
   // Invariant box (center)
   const invBox = svg.append('g').attr('transform', `translate(${W/2}, ${H-30})`);
   invBox.append('rect').attr('x', -80).attr('y', -18).attr('width', 160).attr('height', 36)
     .attr('fill', C.surface).attr('stroke', C.warn).attr('stroke-width', 3).attr('rx', 6);
   const invText = invBox.append('text').attr('text-anchor','middle').attr('y', 6)
-    .attr('font-size', 18).attr('font-weight', 700).attr('fill', C.warn);
+    .attr('font-size', 22).attr('font-weight', 700).attr('fill', C.warn);
 
   function update(a) {
     alpha = a;
@@ -2149,10 +2149,10 @@ registerAnim('E1-2-three-quantities', (container) => {
   const bars = labels.map((label, i) => {
     const x = i * (barW + gap);
     g.append('text').attr('x', x + barW/2).attr('y', maxH + 25).attr('text-anchor','middle')
-      .attr('font-size', 11).attr('fill', C.textSec).text(label);
+      .attr('font-size', 17).attr('fill', C.textSec).text(label);
     const bar = g.append('rect').attr('x', x).attr('width', barW).attr('rx', 4);
     const valText = g.append('text').attr('x', x + barW/2).attr('text-anchor','middle')
-      .attr('font-size', 14).attr('font-weight', 700);
+      .attr('font-size', 20).attr('font-weight', 700);
     return { bar, valText };
   });
 
@@ -2175,7 +2175,7 @@ registerAnim('E1-2-three-quantities', (container) => {
   btn.append('rect').attr('x', -60).attr('y', -14).attr('width', 120).attr('height', 28)
     .attr('fill', C.surface).attr('stroke', C.border).attr('rx', 4);
   const btnText = btn.append('text').attr('text-anchor','middle').attr('y', 5)
-    .attr('font-size', 12).attr('fill', C.textSec).text('切換座標系 →');
+    .attr('font-size', 17).attr('fill', C.textSec).text('切換座標系 →');
   btn.on('click', () => {
     presetIdx = (presetIdx + 1) % presets.length;
     render(presets[presetIdx]);
@@ -2193,19 +2193,19 @@ registerAnim('E2-1-rowspace', (container) => {
 
   // 2D projection of row(X) plane
   g.append('rect').attr('width', pw).attr('height', ph).attr('fill', C.surface).attr('opacity', 0.5).attr('rx', 4);
-  g.append('text').attr('x', pw/2).attr('y', ph+20).attr('text-anchor','middle').attr('font-size', 12).attr('fill', C.muted).text('row(X) 平面');
+  g.append('text').attr('x', pw/2).attr('y', ph+20).attr('text-anchor','middle').attr('font-size', 17).attr('fill', C.muted).text('row(X) 平面');
 
   const xS = d3.scaleLinear().domain([-1, 3]).range([0, pw]);
   const yS = d3.scaleLinear().domain([-1, 2]).range([ph, 0]);
 
   // w0 = 0
   g.append('circle').attr('cx', xS(0)).attr('cy', yS(0)).attr('r', 5).attr('fill', C.info);
-  g.append('text').attr('x', xS(0)-10).attr('y', yS(0)+15).attr('font-size', 11).attr('fill', C.info).text('w₀=0');
+  g.append('text').attr('x', xS(0)-10).attr('y', yS(0)+15).attr('font-size', 17).attr('fill', C.info).text('w₀=0');
 
   // Target X†y
   const target = [2.5, 1.2];
   g.append('circle').attr('cx', xS(target[0])).attr('cy', yS(target[1])).attr('r', 7).attr('fill', C.pass);
-  g.append('text').attr('x', xS(target[0])+10).attr('y', yS(target[1])+5).attr('font-size', 11).attr('fill', C.pass).text('X†y');
+  g.append('text').attr('x', xS(target[0])+10).attr('y', yS(target[1])+5).attr('font-size', 17).attr('fill', C.pass).text('X†y');
 
   // SGD path (zigzag in plane)
   const sgdPoints = [[0,0]];
@@ -2223,7 +2223,7 @@ registerAnim('E2-1-rowspace', (container) => {
     .attr('fill','none').attr('stroke', C.info).attr('stroke-width', 1.5).attr('stroke-dasharray','4,2');
 
   g.append('text').attr('x', pw/2).attr('y', 15).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('fill', C.textSec).text('SGD 軌跡始終在 row(X) 平面上');
+    .attr('font-size', 17).attr('fill', C.textSec).text('SGD 軌跡始終在 row(X) 平面上');
 });
 
 registerAnim('E2-2-sgd-vs-gd', (container) => {
@@ -2264,19 +2264,19 @@ registerAnim('E2-2-sgd-vs-gd', (container) => {
 
   // Points
   g.append('circle').attr('cx', xS(0)).attr('cy', yS(0)).attr('r', 5).attr('fill', C.text);
-  g.append('text').attr('x', xS(0)-5).attr('y', yS(0)+18).attr('font-size', 11).text('w₀');
+  g.append('text').attr('x', xS(0)-5).attr('y', yS(0)+18).attr('font-size', 17).text('w₀');
   g.append('circle').attr('cx', xS(target[0])).attr('cy', yS(target[1])).attr('r', 7).attr('fill', C.pass);
-  g.append('text').attr('x', xS(target[0])+10).attr('y', yS(target[1])+5).attr('font-size', 11).attr('fill', C.pass).text('X†y');
+  g.append('text').attr('x', xS(target[0])+10).attr('y', yS(target[1])+5).attr('font-size', 17).attr('fill', C.pass).text('X†y');
 
   // Legend
   const leg = g.append('g').attr('transform', `translate(${pw-120}, 10)`);
   leg.append('line').attr('x1',0).attr('x2',20).attr('y1',0).attr('y2',0).attr('stroke', C.info).attr('stroke-width',2.5);
-  leg.append('text').attr('x',25).attr('y',4).attr('font-size',12).attr('fill', C.textSec).text('GD（平滑）');
+  leg.append('text').attr('x',25).attr('y',4).attr('font-size',17).attr('fill', C.textSec).text('GD（平滑）');
   leg.append('line').attr('x1',0).attr('x2',20).attr('y1',18).attr('y2',18).attr('stroke', C.fail).attr('stroke-width',1.5);
-  leg.append('text').attr('x',25).attr('y',22).attr('font-size',12).attr('fill', C.textSec).text('SGD（鋸齒）');
+  leg.append('text').attr('x',25).attr('y',22).attr('font-size',17).attr('fill', C.textSec).text('SGD（鋸齒）');
 
   g.append('text').attr('x', pw/2).attr('y', ph+20).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('fill', C.textSec).text('線性模型中 SGD = GD（隱式偏差相同）');
+    .attr('font-size', 17).attr('fill', C.textSec).text('線性模型中 SGD = GD（隱式偏差相同）');
 });
 
 // ========== SECTION E3+E4+E5 ==========
@@ -2334,7 +2334,7 @@ registerAnim('E3-1-rotation', (container) => {
   btn.append('rect').attr('x',-100).attr('y',-14).attr('width',200).attr('height',28)
     .attr('fill', C.surface).attr('stroke', C.border).attr('rx',4);
   const btnText = btn.append('text').attr('text-anchor','middle').attr('y',5)
-    .attr('font-size',12).attr('fill', C.textSec);
+    .attr('font-size',17).attr('fill', C.textSec);
 
   function updateBtn() {
     btnText.text(balanced ? 'Detailed Balance: 成立 (點擊切換)' : 'Detailed Balance: 破缺 (點擊切換)');
@@ -2371,7 +2371,7 @@ registerAnim('E3-2-quasipotential', (container) => {
    {label:'準勢 V', fn: (x,y) => x*x+y*y - 0.5*x*x*y*y, x: 270}].forEach(config => {
     const g = svg.append('g').attr('transform', `translate(${config.x}, 30)`);
     g.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle')
-      .attr('font-size', 14).attr('font-weight', 600).attr('fill', C.textSec).text(config.label);
+      .attr('font-size', 20).attr('font-weight', 600).attr('fill', C.textSec).text(config.label);
 
     const n = 50;
     const vals = [];
@@ -2390,7 +2390,7 @@ registerAnim('E3-2-quasipotential', (container) => {
   });
 
   svg.append('text').attr('x', 250).attr('y', H-10).attr('text-anchor','middle')
-    .attr('font-size', 11).attr('fill', C.muted).text('修正項 -(1/2)θ₁²θ₂² 使準勢等高線變形');
+    .attr('font-size', 17).attr('fill', C.muted).text('修正項 -(1/2)θ₁²θ₂² 使準勢等高線變形');
 });
 
 registerAnim('E4-1-concentric', (container) => {
@@ -2408,14 +2408,14 @@ registerAnim('E4-1-concentric', (container) => {
     svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', l.r)
       .attr('fill', l.fill).attr('opacity', 0.12).attr('stroke', l.fill).attr('stroke-width', 2);
     svg.append('text').attr('x', cx).attr('y', cy - l.r + 15).attr('text-anchor','middle')
-      .attr('font-size', 11).attr('font-weight', 600).attr('fill', l.fill).text(l.label);
+      .attr('font-size', 17).attr('font-weight', 600).attr('fill', l.fill).text(l.label);
   });
 
   // Tooltip area
   const tooltip = svg.append('g').attr('transform', 'translate(320, 40)').attr('opacity', 0);
   tooltip.append('rect').attr('width', 170).attr('height', 80).attr('fill', C.surface)
     .attr('stroke', C.border).attr('rx', 4);
-  const ttText = tooltip.append('text').attr('x', 10).attr('y', 20).attr('font-size', 11)
+  const ttText = tooltip.append('text').attr('x', 10).attr('y', 20).attr('font-size', 17)
     .attr('fill', C.text);
 
   layers.forEach((l, i) => {
@@ -2442,10 +2442,10 @@ registerAnim('E4-2-temperature', (container) => {
   const xS = d3.scaleLinear().domain([0.01, 2]).range([0, pw]);
   const yS = d3.scaleLinear().domain([0, 1.05]).range([ph, 0]);
 
-  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',12);
-  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',12);
-  g.append('text').attr('x',pw/2).attr('y',ph+35).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec).text('τ (溫度)');
-  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec)
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',17);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',17);
+  g.append('text').attr('x',pw/2).attr('y',ph+35).attr('text-anchor','middle').attr('font-size',17).attr('fill', C.textSec).text('τ (溫度)');
+  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',17).attr('fill', C.textSec)
     .attr('transform',`rotate(-90,-45,${ph/2})`).text('P(好解)');
 
   let K = 3;
@@ -2462,7 +2462,7 @@ registerAnim('E4-2-temperature', (container) => {
   deltas.forEach((d, i) => {
     g.append('line').attr('x1',pw-90).attr('x2',pw-70).attr('y1',10+i*18).attr('y2',10+i*18)
       .attr('stroke', colors[i]).attr('stroke-width',2);
-    g.append('text').attr('x',pw-65).attr('y',14+i*18).attr('font-size',11).attr('fill', C.textSec).text(`Δ=${d}`);
+    g.append('text').attr('x',pw-65).attr('y',14+i*18).attr('font-size',17).attr('fill', C.textSec).text(`Δ=${d}`);
   });
 
   function update(newK) {
@@ -2496,9 +2496,9 @@ registerAnim('E5-1-control-panel', (container) => {
 
   // Info panel on right
   const info = svg.append('g').attr('transform', `translate(${W-130}, ${margin.top+10})`);
-  const mEtaText = info.append('text').attr('y', 0).attr('font-size', 14).attr('fill', C.text);
-  const cText = info.append('text').attr('y', 25).attr('font-size', 14).attr('fill', C.text);
-  const boundText = info.append('text').attr('y', 50).attr('font-size', 14).attr('fill', C.text);
+  const mEtaText = info.append('text').attr('y', 0).attr('font-size', 20).attr('fill', C.text);
+  const cText = info.append('text').attr('y', 25).attr('font-size', 20).attr('fill', C.text);
+  const boundText = info.append('text').attr('y', 50).attr('font-size', 20).attr('fill', C.text);
 
   function update() {
     const tau = eta / B;
@@ -2515,7 +2515,7 @@ registerAnim('E5-1-control-panel', (container) => {
 
     // Axes (simple)
     g.selectAll('.axis').remove();
-    g.append('g').attr('class','axis').attr('transform',`translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',11);
+    g.append('g').attr('class','axis').attr('transform',`translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',17);
 
     const hCrit = 2/eta;
     mEtaText.text(`|M_η|: h<${hCrit.toFixed(0)}`);
@@ -2548,15 +2548,15 @@ registerAnim('E5-2-deff', (container) => {
   const yS = d3.scaleLinear().domain([0, 25]).range([ph, 0]);
 
   g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).tickValues(d3.range(0,d,4)).tickFormat(i => `λ${i+1}`))
-    .selectAll('text').attr('font-size',10);
+    .selectAll('text').attr('font-size',17);
 
   const bars = g.selectAll('.bar').data(d3.range(d)).enter().append('rect').attr('class','bar')
     .attr('x', i => xS(i)).attr('width', xS.bandwidth()).attr('rx', 2);
 
   const deffText = svg.append('text').attr('x', W-60).attr('y', 60).attr('text-anchor','middle')
-    .attr('font-size', 14).attr('font-weight', 700).attr('fill', C.warn);
+    .attr('font-size', 20).attr('font-weight', 700).attr('fill', C.warn);
   svg.append('text').attr('x', W-60).attr('y', 80).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('fill', C.textSec).text('d_eff');
+    .attr('font-size', 17).attr('fill', C.textSec).text('d_eff');
 
   function render(key) {
     currentSpectrum = key;
@@ -2580,7 +2580,7 @@ registerAnim('E5-2-deff', (container) => {
     btn.append('rect').attr('width',100).attr('height',22).attr('rx',4)
       .attr('fill', C.surface).attr('stroke', C.border);
     btn.append('text').attr('x',50).attr('y',15).attr('text-anchor','middle')
-      .attr('font-size',11).attr('fill', C.textSec).text(labels[key]);
+      .attr('font-size',17).attr('fill', C.textSec).text(labels[key]);
     btn.on('click', () => render(key));
   });
 
@@ -2616,14 +2616,14 @@ registerAnim('F1-four-roles', (container) => {
     g.append('text').attr('x', cellW/2).attr('y', 75).attr('text-anchor','middle')
       .attr('font-size', 12).attr('fill', C.textSec).text(role.sub);
     g.append('text').attr('x', cellW/2).attr('y', 95).attr('text-anchor','middle')
-      .attr('font-size', 11).attr('fill', C.muted).text(role.domain);
+      .attr('font-size', 12).attr('fill', C.muted).text(role.domain);
 
     // Click to show description
     const descG = g.append('g').attr('opacity', 0);
     descG.append('rect').attr('x', 10).attr('y', 105).attr('width', cellW-20).attr('height', 55)
       .attr('fill', C.overlay).attr('rx', 4);
     const descText = descG.append('text').attr('x', cellW/2).attr('y', 125).attr('text-anchor','middle')
-      .attr('font-size', 10).attr('fill', C.text);
+      .attr('font-size', 12).attr('fill', C.text);
     // Word wrap
     const words = role.desc.split(' ');
     let line = '', lineNum = 0;
@@ -2649,26 +2649,26 @@ registerAnim('F2-regime-map', (container) => {
   const xS = d3.scaleLinear().domain([1, 0]).range([0, pw]); // loss: high→0
   const yS = d3.scaleLinear().domain([1, 100]).range([ph, 0]); // d/n
 
-  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',12);
-  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',12);
-  g.append('text').attr('x',pw/2).attr('y',ph+40).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec).text('訓練損失');
-  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec)
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',17);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',17);
+  g.append('text').attr('x',pw/2).attr('y',ph+40).attr('text-anchor','middle').attr('font-size',17).attr('fill', C.textSec).text('訓練損失');
+  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',17).attr('fill', C.textSec)
     .attr('transform',`rotate(-90,-45,${ph/2})`).text('d/n');
 
   // Regions
   g.append('rect').attr('x', 0).attr('y', 0).attr('width', pw*0.5).attr('height', ph)
     .attr('fill', C.info).attr('opacity', 0.08);
   g.append('text').attr('x', pw*0.25).attr('y', 20).attr('text-anchor','middle')
-    .attr('font-size', 13).attr('fill', C.info).attr('font-weight',600).text('非插值域');
+    .attr('font-size', 17).attr('fill', C.info).attr('font-weight',600).text('非插值域');
   g.append('text').attr('x', pw*0.25).attr('y', 38).attr('text-anchor','middle')
-    .attr('font-size', 11).attr('fill', C.info).text('探索 + 選擇');
+    .attr('font-size', 17).attr('fill', C.info).text('探索 + 選擇');
 
   g.append('rect').attr('x', pw*0.5).attr('y', 0).attr('width', pw*0.5).attr('height', ph)
     .attr('fill', C.pass).attr('opacity', 0.08);
   g.append('text').attr('x', pw*0.75).attr('y', 20).attr('text-anchor','middle')
-    .attr('font-size', 13).attr('fill', C.pass).attr('font-weight',600).text('插值域');
+    .attr('font-size', 17).attr('fill', C.pass).attr('font-weight',600).text('插值域');
   g.append('text').attr('x', pw*0.75).attr('y', 38).attr('text-anchor','middle')
-    .attr('font-size', 11).attr('fill', C.pass).text('篩選 + 鎖定');
+    .attr('font-size', 17).attr('fill', C.pass).text('篩選 + 鎖定');
 
   // Trajectory animation
   const trajectory = [[0.9, 5], [0.7, 10], [0.5, 20], [0.3, 40], [0.1, 60], [0.02, 80], [0, 95]];
@@ -2694,7 +2694,7 @@ registerAnim('F2-regime-map', (container) => {
   svg.append('rect').attr('x', margin.left+10).attr('y', H-40).attr('width', pw-20).attr('height', 28)
     .attr('fill', C.surface).attr('stroke', C.warn).attr('stroke-width', 2).attr('rx', 4);
   svg.append('text').attr('x', W/2).attr('y', H-22).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('font-weight', 700).attr('fill', C.warn)
+    .attr('font-size', 17).attr('font-weight', 700).attr('fill', C.warn)
     .text('現代深度學習主要在插值域，正則化完全是離散效應');
 });
 
@@ -2726,7 +2726,7 @@ registerAnim('G1-dashboard', (container) => {
     g.append('text').attr('x', cardW/2).attr('y', 22).attr('text-anchor','middle')
       .attr('font-size', 14).attr('font-weight', 700).attr('fill', C.info).text(p.id);
     g.append('text').attr('x', cardW/2).attr('y', 42).attr('text-anchor','middle')
-      .attr('font-size', 10).attr('fill', C.textSec).text(p.title);
+      .attr('font-size', 12).attr('fill', C.textSec).text(p.title);
 
     // Mini chart
     const mg = g.append('g').attr('transform', 'translate(15, 55)');
@@ -2741,18 +2741,18 @@ registerAnim('G1-dashboard', (container) => {
         .attr('fill','none').attr('stroke', C.fail).attr('stroke-width', 2);
     } else if (p.miniChart === 'bars') {
       mg.append('rect').attr('x',10).attr('y',30).attr('width',25).attr('height',50).attr('fill', C.pass).attr('rx',2);
-      mg.append('text').attr('x',22).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('結構化');
+      mg.append('text').attr('x',22).attr('y',92).attr('text-anchor','middle').attr('font-size',12).attr('fill', C.muted).text('結構化');
       mg.append('rect').attr('x',55).attr('y',50).attr('width',25).attr('height',30).attr('fill', C.fail).attr('rx',2);
-      mg.append('text').attr('x',67).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('各向同性');
+      mg.append('text').attr('x',67).attr('y',92).attr('text-anchor','middle').attr('font-size',12).attr('fill', C.muted).text('各向同性');
     } else if (p.miniChart === 'curve') {
       const pts = d3.range(0,1.01,0.1).map(x => [x*mw, mh - mh*(1-Math.exp(-3*x))]);
       mg.append('path').attr('d', d3.line()(pts))
         .attr('fill','none').attr('stroke', C.pass).attr('stroke-width', 2);
     } else {
       mg.append('rect').attr('x',10).attr('y',50).attr('width',25).attr('height',30).attr('fill', C.fail).attr('rx',2);
-      mg.append('text').attr('x',22).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('過擬合');
+      mg.append('text').attr('x',22).attr('y',92).attr('text-anchor','middle').attr('font-size',12).attr('fill', C.muted).text('過擬合');
       mg.append('rect').attr('x',55).attr('y',20).attr('width',25).attr('height',60).attr('fill', C.pass).attr('rx',2);
-      mg.append('text').attr('x',67).attr('y',92).attr('text-anchor','middle').attr('font-size',8).attr('fill', C.muted).text('泛化');
+      mg.append('text').attr('x',67).attr('y',92).attr('text-anchor','middle').attr('font-size',12).attr('fill', C.muted).text('泛化');
     }
 
     g.on('click', () => {
@@ -2772,10 +2772,10 @@ registerAnim('G2-phase-transition', (container) => {
   const xS = d3.scaleLinear().domain([0.01, 0.3]).range([0, pw]);
   const yS = d3.scaleLinear().domain([0, 1]).range([ph, 0]);
 
-  g.append('g').attr('transform',`translate(0,${ph})`).call(d3.axisBottom(xS).ticks(6)).selectAll('text').attr('font-size',12);
-  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',12);
-  g.append('text').attr('x',pw/2).attr('y',ph+35).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec).text('η');
-  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec)
+  g.append('g').attr('transform',`translate(0,${ph})`).call(d3.axisBottom(xS).ticks(6)).selectAll('text').attr('font-size',17);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',17);
+  g.append('text').attr('x',pw/2).attr('y',ph+35).attr('text-anchor','middle').attr('font-size',17).attr('fill', C.textSec).text('η');
+  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',17).attr('fill', C.textSec)
     .attr('transform',`rotate(-90,-45,${ph/2})`).text('訓練損失');
 
   // For each solution, loss = 0 when η < 2/h, then jumps
@@ -2800,13 +2800,13 @@ registerAnim('G2-phase-transition', (container) => {
       g.append('line').attr('x1', xS(etaC)).attr('x2', xS(etaC)).attr('y1', 0).attr('y2', ph)
         .attr('stroke', C.warn).attr('stroke-dasharray','3,3').attr('stroke-width', 1);
       g.append('text').attr('x', xS(etaC)).attr('y', -5).attr('text-anchor','middle')
-        .attr('font-size', 9).attr('fill', C.warn).text(`h=${h}`);
+        .attr('font-size', 17).attr('fill', C.warn).text(`h=${h}`);
     }
   });
 
   // η slider indicator
   const indicator = g.append('line').attr('y1', 0).attr('y2', ph).attr('stroke', C.info).attr('stroke-width', 2);
-  const lossLabel = g.append('text').attr('font-size', 14).attr('font-weight', 700).attr('fill', C.fail);
+  const lossLabel = g.append('text').attr('font-size', 20).attr('font-weight', 700).attr('fill', C.fail);
 
   createSlider(container, {
     label: 'η', min: 0.01, max: 0.3, step: 0.002, default: 0.01,
@@ -2931,7 +2931,7 @@ registerAnim('H2-discrete-continuous', (container) => {
     gR.append('rect').attr('x', barXS(i)).attr('y', 120 - (stable ? barH : 0)).attr('width', barXS.bandwidth())
       .attr('height', barH).attr('fill', stable ? C.pass : C.fail).attr('rx', 2);
     gR.append('text').attr('x', barXS(i) + barXS.bandwidth()/2).attr('y', 140)
-      .attr('text-anchor','middle').attr('font-size', 9).attr('fill', C.muted).text(`h=${h}`);
+      .attr('text-anchor','middle').attr('font-size', 12).attr('fill', C.muted).text(`h=${h}`);
   });
   gR.append('text').attr('x', panelW/2).attr('y', 210).attr('text-anchor','middle')
     .attr('font-size', 11).attr('fill', C.muted).text('Lyapunov 穩定性分析');
