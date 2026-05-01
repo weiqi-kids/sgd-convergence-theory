@@ -1,5 +1,8 @@
 node_modules/
+package.json
 package-lock.json
 asvs-server.log
 mydatabase.db
 *.mjs
+.claude/
+.DS_Store
