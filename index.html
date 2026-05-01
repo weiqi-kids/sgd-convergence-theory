@@ -221,7 +221,7 @@ footer a:hover { text-decoration: underline; }
 <section class="hero" id="hero">
   <h1>SGD 為何收斂到好解？</h1>
   <p class="subtitle">其普遍成立的充分條件是什麼？</p>
-  <p class="conclusion">不存在單一的萬能條件，但存在四道關卡——全部通過，SGD 就能找到好解。<br>前三個是演算法的條件，第四個是問題本身的條件。</p>
+  <p class="conclusion">SGD 收斂到好解<strong>不是</strong>無條件的普遍事實——存在四類嚴格反例使其失敗。但在四道關卡全部通過時，SGD 的隱式正則化機制可以被完整證明。<br>前三個是你可以透過調整演算法（例如學習率）來控制的；第四個則取決於問題本身——數據的結構是否讓「簡單的函數」恰好是「正確的函數」。</p>
   <ul class="conditions-list">
     <li><span class="check">✓</span> ¬F1：學習率夠大使盆地間混合</li>
     <li><span class="check">✓</span> ¬F2：學習率不至於太大使 SGD 發散</li>
@@ -255,6 +255,20 @@ footer a:hover { text-decoration: underline; }
     <div class="detail-content">
       <p>SGD 迭代：\(\theta_{t+1} = \theta_t - \eta \nabla\ell_{z_t}(\theta_t)\)，\(z_t \sim \text{Uniform}(\{1,\ldots,n\})\)</p>
       <p>梯度噪聲方差：\(\Sigma(\theta) = \frac{1}{n}\sum_i [\ell'_i(\theta)]^2 - [L'(\theta)]^2\)</p>
+      <p><strong>收斂的三層定義：</strong></p>
+      <ul>
+        <li>(C1) 優化收斂：\(L(\theta_t) \to L^*\) a.s.</li>
+        <li>(C2) 分佈收斂：\(\theta_t \to^d \mu_\eta\)（某穩態測度）</li>
+        <li>(C3) 吸收收斂：\(\theta_t \to \theta^*\) a.s.</li>
+      </ul>
+      <p><strong>好解的四種定義（reparameterization-invariant）：</strong></p>
+      <ul>
+        <li>(G1) 低噪聲比：\(\Sigma(\theta^*)/H(\theta^*)\) 在所有極小值中較小</li>
+        <li>(G2) 低 Jacobian 複雜度：\(C(\theta^*) = \|J\|_F/\sqrt{n}\) 小（插值域）</li>
+        <li>(G3) 穩定解：leave-one-out 穩定性 \(\beta\) 小</li>
+        <li>(G4) 泛化解：\(L_{\text{test}} - L_{\text{train}} \le \varepsilon\) 小</li>
+      </ul>
+      <p>核心關聯：SGD 偏好 (G1)/(G2)，而 (G1)→(G3)→(G4)，(G2)→(G4)。</p>
     </div>
   </details>
   <details class="math-detail">
@@ -275,7 +289,7 @@ footer a:hover { text-decoration: underline; }
 <!-- SECTION C1: 定理 I -->
 <section id="theorem1">
   <h2>C1. 定理 I：非插值域閉環</h2>
-  <p class="intro">當模型還沒有完美擬合所有資料時，SGD 的隨機噪聲就像溫度——它讓參數在不同的盆地之間流動，最終更常停留在「每筆資料梯度都很小」的安靜盆地裡。而安靜的盆地，恰好是泛化更好的地方。</p>
+  <p class="intro">當模型還沒有完美擬合所有資料時，SGD 的隨機噪聲就像溫度——它讓參數在不同的盆地之間流動，最終更常停留在「每筆資料梯度都很小」的安靜盆地裡。而安靜的盆地，恰好是泛化更好的地方（在四道關卡都通過的前提下）。</p>
   <div class="animation-grid single">
     <div class="animation-container h-360" id="anim-C1-1-veff">
       <h3>有效勢能 V_eff vs 原始損失 L</h3>
@@ -400,7 +414,7 @@ footer a:hover { text-decoration: underline; }
 <!-- SECTION D: 四類反例 -->
 <section id="counterexamples">
   <h2>D. 四類反例</h2>
-  <p class="intro">前面說了 SGD 什麼時候成功。現在反過來問：什麼時候會失敗？恰好有四種方式讓 SGD 找到壞解，每一種對應一個必要條件被違反。</p>
+  <p class="intro">前面說了 SGD 什麼時候成功。現在反過來問：什麼時候會失敗？恰好有四種方式讓 SGD 找到壞解，每一種對應一個必要條件被違反。以下 F1-F4 是四類反例的代號，對應 Hero 中四道關卡被違反的情況。</p>
 
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">F1：η 太小（動力學陷阱）</h3>
   <p class="intro">學習率太小，SGD 像一個只敢小碎步走的人，永遠翻不過兩個盆地之間的山丘。</p>
@@ -438,12 +452,12 @@ footer a:hover { text-decoration: underline; }
     <div class="animation-container h-400" id="anim-D3-1-equal-wells">
       <h3>等深雙井</h3>
       <div class="d3-canvas"></div>
-      <p class="hint">對比定理 I 中的不等深情形</p>
+      <p class="hint">觀察兩個等深盆地中粒子的分佈比例，對比定理 I 中的不等深情形</p>
     </div>
     <div class="animation-container h-300" id="anim-D3-2-selectivity">
       <h3>選擇力儀表板</h3>
       <div class="d3-canvas"></div>
-      <p class="hint">拖動旋鈕讓兩解的 Σ/H 趨於相等</p>
+      <p class="hint">拖動滑桿讓兩解的 Σ/H 趨於相等</p>
     </div>
   </div>
 
@@ -505,6 +519,17 @@ footer a:hover { text-decoration: underline; }
       <p class="hint">切換座標系，觀察哪個量不變</p>
     </div>
   </div>
+  <details class="math-detail">
+    <summary>Reparameterization 不變性證明</summary>
+    <div class="detail-content">
+      <p>設 \(\theta = g(\varphi)\) 是光滑雙射，\(\varphi^* = g^{-1}(\theta^*)\)。</p>
+      <p>\(\tilde{H} = L''(g(\varphi^*)) \cdot [g'(\varphi^*)]^2 = H \cdot (g')^2\)</p>
+      <p>\(\tilde{\Sigma} = E_i[(\ell'_i(g(\varphi^*)))^2] \cdot [g'(\varphi^*)]^2 = \Sigma \cdot (g')^2\)</p>
+      <p>故 \(\tilde{\Sigma}/\tilde{H} = \Sigma \cdot (g')^2 / (H \cdot (g')^2) = \Sigma/H\) ∎</p>
+      <p><strong>推論：</strong>Flatness（\(H\) 小）和 Simplicity（\(\Sigma\) 小）都可被 reparameterization 改變而不影響泛化。但 \(\Sigma/H\) 不變 → 泛化間隙 \(\approx \Sigma/(H(n-1))\) 是內在幾何量。</p>
+      <p><strong>多維推廣：</strong>\(\text{tr}(H^{-1}\Sigma)\) 也是不變的（Jacobian 的 \((J^\top)^2\) 在分子分母抵消）。</p>
+    </div>
+  </details>
 
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E2. 最小範數投影</h3>
   <p class="intro">在線性模型中，SGD 從零出發，不管怎麼隨機抽樣，最終一定走到和 GD 一樣的最小範數解。這是代數性質，與噪聲無關。</p>
@@ -520,9 +545,22 @@ footer a:hover { text-decoration: underline; }
       <p class="hint">兩條路徑收斂到同一點</p>
     </div>
   </div>
+  <details class="math-detail">
+    <summary>最小範數解證明</summary>
+    <div class="detail-content">
+      <ol>
+        <li>\(w_0 = 0 \in \text{row}(X)\)</li>
+        <li>SGD 增量 \(= -\eta(w^\top x_{z_t} - y_{z_t})x_{z_t} \in \text{row}(X)\)</li>
+        <li>歸納：\(w_t \in \text{row}(X)\) 對所有 \(t\)</li>
+        <li>\(\text{row}(X)\) 中唯一的插值解是 \(X^\dagger y\)</li>
+        <li>凸損失上 SGD 收斂定理 → \(w_t \to X^\dagger y\) ∎</li>
+      </ol>
+      <p><strong>意義：</strong>這是代數性質，與噪聲無關。在非線性模型中 SGD 與 GD 的隱式偏差可能不同。</p>
+    </div>
+  </details>
 
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E3. 多維 Detailed Balance</h3>
-  <p class="intro">在一維中穩態有簡潔公式。多維時可能存在旋轉流，需要解更難的方程。</p>
+  <p class="intro">前面定理 I 的穩態公式之所以這麼漂亮，是因為在一維中「detailed balance」（細緻平衡）自動成立——每個方向的機率流都平衡。但在多維空間中，噪聲可能產生旋轉流，讓穩態不再有簡潔的公式形式。此時需要解一個更難的方程來找「準勢」，它取代了有效勢能 V_eff 的角色。</p>
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-E3-1-rotation">
       <h3>2D 向量場與旋轉流</h3>
@@ -535,9 +573,25 @@ footer a:hover { text-decoration: underline; }
       <p class="hint">比較兩組等高線的差異</p>
     </div>
   </div>
+  <details class="math-detail">
+    <summary>Detailed Balance 成立條件與破缺分析</summary>
+    <div class="detail-content">
+      <p><strong>成立條件：</strong>\(\text{curl}(\Sigma^{-1}\nabla L) = 0\)，即 \(\partial_i[\Sigma^{-1}\nabla L]_j = \partial_j[\Sigma^{-1}\nabla L]_i\) 對所有 \(i \ne j\)。</p>
+      <p><strong>特殊情況（自動成立）：</strong></p>
+      <ul>
+        <li>\(\Sigma = \sigma^2(\theta)I\) 且 \(\sigma^2 = h(L)\) → 自動保守</li>
+        <li>\(\Sigma\) 常數且 \([\Sigma^{-1}, H] = 0\) → 保守</li>
+        <li>一維 → 自動成立（無橫向分量）</li>
+      </ul>
+      <p><strong>破缺時：</strong>穩態仍為 \(p \sim \exp(-V/\tau)\)，但 \(V\) 是 Freidlin-Wentzell 準勢，需解 Hamilton-Jacobi 方程。</p>
+      <p><strong>2D 具體例子：</strong>\(\nabla L = (\theta_1, \theta_2)\)，\(\Sigma = \text{diag}(1+\theta_2^2, 1)\)。</p>
+      <p>Detailed balance 破缺：\(\partial_{\theta_2}[\theta_1/(1+\theta_2^2)] = -2\theta_1\theta_2/(1+\theta_2^2)^2 \ne 0 = \partial_{\theta_1}[\theta_2]\)。</p>
+      <p>準勢近似：\(V \approx \theta_1^2 + \theta_2^2 - \frac{1}{2}\theta_1^2\theta_2^2 + O(|\theta|^6)\)。修正項使噪聲大的方向準勢降低。</p>
+    </div>
+  </details>
 
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E4. 三層條件分類</h3>
-  <p class="intro">SGD 收斂到好解的條件分三層——必要、充分、近似充分——對應不同信心等級。</p>
+  <p class="intro">SGD 收斂到好解的條件分三層。最外層是「必要條件」：如果連這個都不滿足，SGD 一定找不到好解。中間層是「近似充分」：滿足後大概率找到近似好解。最內層是「嚴格充分」：滿足後以指數高的概率找到好解。了解自己處在哪一層，就知道對 SGD 的信心該有多大。</p>
   <div class="animation-grid">
     <div class="animation-container h-300" id="anim-E4-1-concentric">
       <h3>三層同心圓</h3>
@@ -550,9 +604,20 @@ footer a:hover { text-decoration: underline; }
       <p class="hint">拖動滑桿調整極小值數量 K</p>
     </div>
   </div>
+  <details class="math-detail">
+    <summary>三層條件的精確數學陳述</summary>
+    <div class="detail-content">
+      <p><strong>必要條件：</strong>\(V_{\text{eff}}\) 的全局最小值落在好解集 \(G\) 中。</p>
+      <p>證明：穩態在 \(\tau \to 0\) 時集中在 \(V_{\text{eff}}\) 全局最小值上。若最小值不在 \(G\) 中 → 穩態集中在壞解 → 矛盾。</p>
+      <p><strong>充分條件：</strong>\(V_{\text{eff}}\) 全局最小唯一在 \(G\) 中，能隙 \(\Delta > 0\)，\(\tau \ll \Delta\)。</p>
+      <p>結論：\(P(\text{好解}) \ge 1 - (K-1)\exp(-2\Delta/\tau)\)</p>
+      <p><strong>近似充分條件：</strong>所有 \(V_{\text{eff}}\) 值 \(\le V_{\text{eff}}^{\min} + \delta\) 的極小值都近似好（\(\text{Gap} \le \varepsilon + \varepsilon'\)）。</p>
+      <p>結論：\(P(\text{Gap} \le \varepsilon + \varepsilon') \ge 1 - \gamma\)，其中 \(\gamma \sim Ke^{-2\delta/\tau}\)</p>
+    </div>
+  </details>
 
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E5. 各因素的嚴格影響</h3>
-  <p class="intro">學習率、batch size、過參數化程度、曲率——每個因素如何影響 SGD 的選擇？</p>
+  <p class="intro">學習率、batch size、過參數化程度、曲率——每個因素都會改變 SGD 的偏好景觀。有些改變很直觀（η 增大 → 篩選更嚴），有些則微妙（過參數化使噪聲歸零，迫使分析從連續轉向離散）。</p>
   <div class="animation-grid">
     <div class="animation-container h-360" id="anim-E5-1-control-panel">
       <h3>四因素控制面板</h3>
@@ -587,7 +652,7 @@ footer a:hover { text-decoration: underline; }
 <!-- SECTION F: 噪聲四重角色 -->
 <section id="noise-roles">
   <h2>F. 噪聲的四重角色</h2>
-  <p class="intro">SGD 中的噪聲不只是干擾——它同時扮演四個角色，在不同的機制域中用不同的數學方式發揮作用。</p>
+  <p class="intro">前面從不同角度看了 SGD 的成功與失敗。現在退後一步，把噪聲的角色做一個統整。SGD 中的噪聲不只是干擾——它同時扮演四個角色，在不同的機制域中用不同的數學方式發揮作用。</p>
   <div class="animation-grid">
     <div class="animation-container h-500" id="anim-F1-four-roles">
       <h3>四重角色互動矩陣</h3>
@@ -1129,7 +1194,7 @@ registerAnim('C1-1-veff', (container) => {
     ctx.fillStyle = C.info;
     particles.forEach(p => {
       let integral = 0;
-      for (let s = -3.5; s < p; s += 0.1) integral += (doubleWellPrime(s, a, b) / sigmaFn(s)) * 0.1;
+      for (let s = -3.5; s < p; s += 0.05) integral += (doubleWellPrime(s, a, b) / sigmaFn(s)) * 0.05;
       const veff = (2/tau) * integral + (tau/2) * Math.log(sigmaFn(p));
       ctx.beginPath();
       ctx.arc(xS(p), vS(veff), 3, 0, Math.PI * 2);
@@ -1342,7 +1407,7 @@ registerAnim('C2-1-eta-screening', (container) => {
     const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveBasis);
     const curveData = hVals.map(h => {
       const val = Math.abs(1 - eta * h);
-      return [h, val > 0 ? (1/5) * Math.log(val) : 0];
+      return [h, val > 0 ? (1/solutions.length) * Math.log(val) : 0];
     }).filter(d => Math.abs(d[1]) < 0.15);
     curvePath.attr('d', lineGen(curveData));
 
@@ -1806,16 +1871,8 @@ registerAnim('D4-1-reversal', (container) => {
   const W = 500, H = 360, margin = { top: 30, right: 20, bottom: 40, left: 50 };
   const { canvas, ctx, w: cw, h: ch } = createCanvas(container, W, H);
   const a = 0.25, b = 2, c = 4;
-  // REVERSED: good well A has HIGH Σ, bad well B has LOW Σ
-  const sigmaFn = (t) => 10.5 + 9.5 * Math.tanh(t); // Σ(-2)≈1 → reversed to Σ(-2)≈20, Σ(2)≈1
-  // Actually: Σ_A=20 at θ=-2, Σ_B=1 at θ=+2
-  // tanh(-2)≈-0.96 → 10.5 + 9.5*(-0.96)=10.5-9.12=1.38 (close to 1)
-  // tanh(2)≈0.96 → 10.5+9.12=19.62 (close to 20)
-  // Wait, this gives Σ_A(θ=-2)≈1.38 and Σ_B(θ=2)≈19.62 — that's reversed from what we want!
-  // We want Σ_A=20 (good well), Σ_B=1 (bad well)
-  // So: sigmaFn = (t) => 10.5 - 9.5 * Math.tanh(t)
-  // tanh(-2)≈-0.96 → 10.5+9.12=19.62≈20 ✓, tanh(2)≈0.96 → 10.5-9.12=1.38≈1 ✓
-  const sigmaFnFixed = (t) => 10.5 - 9.5 * Math.tanh(t);
+  // REVERSED: Σ_A=20 at θ=-2 (good well, high noise), Σ_B=1 at θ=+2 (bad well, low noise)
+  const sigmaFn = (t) => 10.5 - 9.5 * Math.tanh(t);
   const Vprime = (t) => doubleWellPrime(t, a, b);
   const tau = 0.3;
   const N = 50;
@@ -1835,7 +1892,7 @@ registerAnim('D4-1-reversal', (container) => {
     ctx.fillStyle = C.fail;
     ctx.fillText('B ✗壞 (Σ=1)', xS(1.2), yS(doubleWell(2,a,b,c))+20);
     // Particles
-    for (let i=0;i<N;i++) { particles[i]=emStep(particles[i], Vprime, sigmaFnFixed, tau, 0.01); particles[i]=Math.max(-3.4,Math.min(3.4,particles[i])); }
+    for (let i=0;i<N;i++) { particles[i]=emStep(particles[i], Vprime, sigmaFn, tau, 0.01); particles[i]=Math.max(-3.4,Math.min(3.4,particles[i])); }
     ctx.fillStyle = C.info;
     particles.forEach(p => { ctx.beginPath(); ctx.arc(xS(p), yS(doubleWell(p,a,b,c)), 3, 0, Math.PI*2); ctx.fill(); });
     const cA=particles.filter(p=>p<0).length, cB=N-cA;
