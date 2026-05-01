@@ -2114,7 +2114,311 @@ registerAnim('E2-2-sgd-vs-gd', (container) => {
 });
 
 // ========== SECTION E3+E4+E5 ==========
-// Task 9
+registerAnim('E3-1-rotation', (container) => {
+  const W = 500, H = 360;
+  const svg = createSVG(container, W, H);
+  const g = svg.append('g').attr('transform', 'translate(50, 40)');
+  const pw = 400, ph = 280;
+  const xS = d3.scaleLinear().domain([-2.5, 2.5]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([-2.5, 2.5]).range([ph, 0]);
+
+  let balanced = true;
+
+  // Vector field arrows
+  const arrowG = g.append('g');
+  function drawField() {
+    arrowG.selectAll('*').remove();
+    const step = 0.6;
+    for (let x = -2.2; x <= 2.2; x += step) {
+      for (let y = -2.2; y <= 2.2; y += step) {
+        let dx, dy;
+        if (balanced) { dx = -x; dy = -y; }
+        else { dx = -x / (1 + y*y); dy = -y; } // with rotation
+        const len = Math.sqrt(dx*dx + dy*dy);
+        if (len < 0.01) continue;
+        const scale = 15 / Math.max(len, 1);
+        arrowG.append('line')
+          .attr('x1', xS(x)).attr('y1', yS(y))
+          .attr('x2', xS(x) + dx*scale).attr('y2', yS(y) - dy*scale)
+          .attr('stroke', C.muted).attr('stroke-width', 1);
+      }
+    }
+  }
+
+  // Particle trail
+  const trailPath = g.append('path').attr('fill','none').attr('stroke', C.info).attr('stroke-width', 1.5);
+  let trail = [];
+  let px = 2, py = 1.5;
+  const dt = 0.02;
+
+  function simStep() {
+    const sigma = balanced ? 1 : (1 + py*py);
+    const noiseX = Math.sqrt(2 * 0.3 * sigma * dt) * d3.randomNormal(0,1)();
+    const noiseY = Math.sqrt(2 * 0.3 * dt) * d3.randomNormal(0,1)();
+    if (balanced) { px += -px*dt + noiseX; py += -py*dt + noiseY; }
+    else { px += -px/(1+py*py)*dt + noiseX; py += -py*dt + noiseY; }
+    px = Math.max(-2.4, Math.min(2.4, px));
+    py = Math.max(-2.4, Math.min(2.4, py));
+    trail.push([px, py]);
+    if (trail.length > 300) trail.shift();
+  }
+
+  // Toggle button
+  const btn = svg.append('g').attr('transform', 'translate(250, 20)').style('cursor','pointer');
+  btn.append('rect').attr('x',-100).attr('y',-14).attr('width',200).attr('height',28)
+    .attr('fill', C.surface).attr('stroke', C.border).attr('rx',4);
+  const btnText = btn.append('text').attr('text-anchor','middle').attr('y',5)
+    .attr('font-size',12).attr('fill', C.textSec);
+
+  function updateBtn() {
+    btnText.text(balanced ? 'Detailed Balance: 成立 (點擊切換)' : 'Detailed Balance: 破缺 (點擊切換)');
+  }
+  btn.on('click', () => {
+    balanced = !balanced;
+    trail = []; px = 2; py = 1.5;
+    drawField(); updateBtn();
+  });
+
+  drawField(); updateBtn();
+
+  const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1]));
+  let frame = 0;
+  function animate() {
+    const reg = animRegistry['E3-1-rotation']; if (!reg||!reg.playing) return;
+    frame++;
+    if (frame % 2 === 0) {
+      for (let i = 0; i < 3; i++) simStep();
+      trailPath.attr('d', lineGen(trail));
+    }
+    reg.rafId = requestAnimationFrame(animate);
+  }
+  if (!reducedMotion) { animRegistry['E3-1-rotation'].playing=true; animRegistry['E3-1-rotation'].rafId=requestAnimationFrame(animate); }
+});
+
+registerAnim('E3-2-quasipotential', (container) => {
+  const W = 500, H = 360;
+  const svg = createSVG(container, W, H);
+  const halfW = 200, ph = 280;
+
+  [{label:'真損失 L', fn: (x,y) => (x*x+y*y)/2, x: 30},
+   {label:'準勢 V', fn: (x,y) => x*x+y*y - 0.5*x*x*y*y, x: 270}].forEach(config => {
+    const g = svg.append('g').attr('transform', `translate(${config.x}, 30)`);
+    g.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle')
+      .attr('font-size', 14).attr('font-weight', 600).attr('fill', C.textSec).text(config.label);
+
+    const n = 50;
+    const vals = [];
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        const x = -2.5 + 5*i/(n-1), y = -2.5 + 5*j/(n-1);
+        vals.push(config.fn(x, y));
+      }
+    }
+    const contours = d3.contours().size([n, n]).thresholds(d3.range(0.2, 5, 0.4))(vals);
+    const proj = d3.geoIdentity().scale(halfW/n);
+    g.selectAll('path').data(contours).enter().append('path')
+      .attr('d', d3.geoPath(proj))
+      .attr('fill', 'none').attr('stroke', (d, i) => d3.interpolateBlues(0.3 + i * 0.05))
+      .attr('stroke-width', 1);
+  });
+
+  svg.append('text').attr('x', 250).attr('y', H-10).attr('text-anchor','middle')
+    .attr('font-size', 11).attr('fill', C.muted).text('修正項 -(1/2)θ₁²θ₂² 使準勢等高線變形');
+});
+
+registerAnim('E4-1-concentric', (container) => {
+  const W = 500, H = 260;
+  const svg = createSVG(container, W, H);
+  const cx = 180, cy = 130;
+
+  const layers = [
+    { r: 110, label: '必要條件', fill: C.border, desc: 'V_eff 全局最小值在好解集 G 中' },
+    { r: 75, label: '近似充分', fill: C.info, desc: 'V_eff ≤ V_eff^min + δ 的解都近似好' },
+    { r: 40, label: '嚴格充分', fill: C.pass, desc: '唯一最小值 + 能隙 Δ > 0，P(好解) ≥ 1-(K-1)e^{-2Δ/τ}' },
+  ];
+
+  layers.forEach(l => {
+    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', l.r)
+      .attr('fill', l.fill).attr('opacity', 0.12).attr('stroke', l.fill).attr('stroke-width', 2);
+    svg.append('text').attr('x', cx).attr('y', cy - l.r + 15).attr('text-anchor','middle')
+      .attr('font-size', 11).attr('font-weight', 600).attr('fill', l.fill).text(l.label);
+  });
+
+  // Tooltip area
+  const tooltip = svg.append('g').attr('transform', 'translate(320, 40)').attr('opacity', 0);
+  tooltip.append('rect').attr('width', 170).attr('height', 80).attr('fill', C.surface)
+    .attr('stroke', C.border).attr('rx', 4);
+  const ttText = tooltip.append('text').attr('x', 10).attr('y', 20).attr('font-size', 11)
+    .attr('fill', C.text);
+
+  layers.forEach((l, i) => {
+    // Hover zones (invisible circles)
+    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', l.r)
+      .attr('fill', 'transparent').style('cursor','pointer')
+      .on('mouseenter', () => {
+        tooltip.attr('opacity', 1);
+        ttText.selectAll('tspan').remove();
+        ttText.append('tspan').attr('x', 10).attr('dy', 0).attr('font-weight', 700).text(l.label);
+        ttText.append('tspan').attr('x', 10).attr('dy', 18).text(l.desc.substring(0, 25));
+        ttText.append('tspan').attr('x', 10).attr('dy', 16).text(l.desc.substring(25));
+      })
+      .on('mouseleave', () => tooltip.attr('opacity', 0));
+  });
+});
+
+registerAnim('E4-2-temperature', (container) => {
+  const W = 500, H = 260, margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const xS = d3.scaleLinear().domain([0.01, 2]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([0, 1.05]).range([ph, 0]);
+
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',12);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',12);
+  g.append('text').attr('x',pw/2).attr('y',ph+35).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec).text('τ (溫度)');
+  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec)
+    .attr('transform',`rotate(-90,-45,${ph/2})`).text('P(好解)');
+
+  let K = 3;
+  const deltas = [0.5, 1.0, 2.0];
+  const colors = [C.muted, C.info, C.pass];
+  const tauVals = d3.range(0.05, 2, 0.02);
+  const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveBasis);
+
+  const paths = deltas.map((delta, i) => {
+    return g.append('path').attr('fill','none').attr('stroke', colors[i]).attr('stroke-width', 2);
+  });
+
+  // Legend
+  deltas.forEach((d, i) => {
+    g.append('line').attr('x1',pw-90).attr('x2',pw-70).attr('y1',10+i*18).attr('y2',10+i*18)
+      .attr('stroke', colors[i]).attr('stroke-width',2);
+    g.append('text').attr('x',pw-65).attr('y',14+i*18).attr('font-size',11).attr('fill', C.textSec).text(`Δ=${d}`);
+  });
+
+  function update(newK) {
+    K = newK;
+    paths.forEach((path, i) => {
+      const data = tauVals.map(tau => [tau, Math.max(0, 1 - (K-1)*Math.exp(-2*deltas[i]/tau))]);
+      path.attr('d', lineGen(data));
+    });
+  }
+
+  createSlider(container, {
+    label: 'K', min: 2, max: 10, step: 1, default: 3,
+    format: v => v.toString(), onChange: update
+  });
+  update(3);
+});
+
+registerAnim('E5-1-control-panel', (container) => {
+  const W = 500, H = 320, margin = { top: 20, right: 140, bottom: 40, left: 50 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  let eta = 0.1, B = 32;
+  const a = 0.25, b = 2, c = 4;
+  const xS = d3.scaleLinear().domain([-3.5, 3.5]).range([0, pw]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.05);
+
+  // V_eff curve
+  const veffPath = g.append('path').attr('fill','none').attr('stroke', C.info).attr('stroke-width', 2);
+
+  // Info panel on right
+  const info = svg.append('g').attr('transform', `translate(${W-130}, ${margin.top+10})`);
+  const mEtaText = info.append('text').attr('y', 0).attr('font-size', 14).attr('fill', C.text);
+  const cText = info.append('text').attr('y', 25).attr('font-size', 14).attr('fill', C.text);
+  const boundText = info.append('text').attr('y', 50).attr('font-size', 14).attr('fill', C.text);
+
+  function update() {
+    const tau = eta / B;
+    const sigmaFn = (t) => 2.5 - 1.5*Math.tanh(t);
+    const veffVals = thetaVals.map(t => {
+      let integral = 0;
+      for (let s = -3.5; s < t; s += 0.05) integral += (doubleWellPrime(s, a, b) / sigmaFn(s)) * 0.05;
+      return (2/tau) * integral + (tau/2) * Math.log(sigmaFn(t));
+    });
+    const minV = d3.min(veffVals);
+    const yS = d3.scaleLinear().domain([minV - 0.5, minV + 10]).range([ph, 0]);
+    const lineGen = d3.line().x((_, i) => xS(thetaVals[i])).y(d => yS(d)).curve(d3.curveBasis);
+    veffPath.attr('d', lineGen(veffVals));
+
+    // Axes (simple)
+    g.selectAll('.axis').remove();
+    g.append('g').attr('class','axis').attr('transform',`translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size',11);
+
+    const hCrit = 2/eta;
+    mEtaText.text(`|M_η|: h<${hCrit.toFixed(0)}`);
+    cText.text(`C ≤ ${Math.sqrt(2/eta).toFixed(1)}`);
+    boundText.text(`界: O(${(1/Math.sqrt(eta*100)).toFixed(2)})`);
+  }
+
+  createSlider(container, { label: 'η', min: 0.01, max: 0.5, step: 0.01, default: 0.1,
+    format: v => v.toFixed(2), onChange: v => { eta = v; update(); } });
+  createSlider(container, { label: 'B', min: 1, max: 128, step: 1, default: 32,
+    format: v => v.toString(), onChange: v => { B = v; update(); } });
+  update();
+});
+
+registerAnim('E5-2-deff', (container) => {
+  const W = 500, H = 260, margin = { top: 20, right: 100, bottom: 40, left: 50 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const d = 20;
+  const spectra = {
+    uniform: Array.from({length: d}, () => 5),
+    exponential: Array.from({length: d}, (_, i) => 20 * Math.exp(-i * 0.3)),
+    powerlaw: Array.from({length: d}, (_, i) => 20 / (1 + i) ** 1.5),
+  };
+  let currentSpectrum = 'exponential';
+
+  const xS = d3.scaleBand().domain(d3.range(d)).range([0, pw]).padding(0.2);
+  const yS = d3.scaleLinear().domain([0, 25]).range([ph, 0]);
+
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).tickValues(d3.range(0,d,4)).tickFormat(i => `λ${i+1}`))
+    .selectAll('text').attr('font-size',10);
+
+  const bars = g.selectAll('.bar').data(d3.range(d)).enter().append('rect').attr('class','bar')
+    .attr('x', i => xS(i)).attr('width', xS.bandwidth()).attr('rx', 2);
+
+  const deffText = svg.append('text').attr('x', W-60).attr('y', 60).attr('text-anchor','middle')
+    .attr('font-size', 14).attr('font-weight', 700).attr('fill', C.warn);
+  svg.append('text').attr('x', W-60).attr('y', 80).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('fill', C.textSec).text('d_eff');
+
+  function render(key) {
+    currentSpectrum = key;
+    const vals = spectra[key];
+    const trH = d3.sum(vals);
+    const trH2 = d3.sum(vals.map(v => v*v));
+    const deff = (trH*trH) / trH2;
+
+    bars.data(vals).transition().duration(500)
+      .attr('y', v => yS(v)).attr('height', v => ph - yS(v))
+      .attr('fill', (v, i) => i < Math.round(deff) ? C.info : C.muted);
+
+    deffText.text(deff.toFixed(1));
+  }
+
+  // Buttons
+  const btnG = svg.append('g').attr('transform', `translate(${margin.left}, ${H-15})`);
+  ['uniform', 'exponential', 'powerlaw'].forEach((key, i) => {
+    const labels = { uniform: '均勻', exponential: '指數衰減', powerlaw: '冪律' };
+    const btn = btnG.append('g').attr('transform', `translate(${i*120}, 0)`).style('cursor','pointer');
+    btn.append('rect').attr('width',100).attr('height',22).attr('rx',4)
+      .attr('fill', C.surface).attr('stroke', C.border);
+    btn.append('text').attr('x',50).attr('y',15).attr('text-anchor','middle')
+      .attr('font-size',11).attr('fill', C.textSec).text(labels[key]);
+    btn.on('click', () => render(key));
+  });
+
+  render('exponential');
+});
 
 // ========== SECTION F ==========
 // Task 10
