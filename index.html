@@ -2648,7 +2648,125 @@ registerAnim('G2-phase-transition', (container) => {
 });
 
 // ========== SECTION H ==========
-// Task 12
+registerAnim('H1-research-map', (container) => {
+  const W = 500, H = 360;
+  const svg = createSVG(container, W, H);
+
+  const nodes = [
+    { id: 'T1', label: '定理 I', solved: true, x: 80, y: 80 },
+    { id: 'T2', label: '定理 II', solved: true, x: 80, y: 200 },
+    { id: 'U1', label: '多維 V_eff', solved: false, x: 250, y: 50 },
+    { id: 'U2', label: 'Jacobian\n正交假設', solved: false, x: 250, y: 140 },
+    { id: 'U3', label: '全局軌跡', solved: false, x: 400, y: 80 },
+    { id: 'U4', label: 'F4 邊界\n精確化', solved: false, x: 400, y: 200 },
+    { id: 'U5', label: '離散-連續\n統一', solved: false, x: 320, y: 280 },
+  ];
+  const edges = [
+    ['T1', 'U1'], ['T1', 'U3'], ['T2', 'U2'], ['T2', 'U3'],
+    ['T1', 'U5'], ['T2', 'U5'], ['U1', 'U4'],
+  ];
+
+  // Draw edges
+  edges.forEach(([from, to]) => {
+    const f = nodes.find(n => n.id === from), t = nodes.find(n => n.id === to);
+    svg.append('line').attr('x1', f.x).attr('y1', f.y).attr('x2', t.x).attr('y2', t.y)
+      .attr('stroke', C.muted).attr('stroke-width', 1.5).attr('stroke-dasharray','4,3');
+  });
+
+  // Tooltip
+  const tooltip = svg.append('g').attr('opacity', 0);
+  tooltip.append('rect').attr('width', 200).attr('height', 50).attr('fill', C.surface)
+    .attr('stroke', C.border).attr('rx', 4);
+  const ttText = tooltip.append('text').attr('x', 10).attr('y', 20).attr('font-size', 11);
+
+  const descs = {
+    T1: '1D SDE 穩態分佈（已完成）', T2: '離散 Lyapunov 分析（已完成）',
+    U1: '多維 detailed balance 需 Freidlin-Wentzell 準勢', U2: '去掉需非交換隨機矩陣乘積理論',
+    U3: '從隨機初始化到好解盆地的全局分析', U4: 'Corr(Σ, Gap) > 0 何時成立',
+    U5: '兩個域使用完全不同的數學工具',
+  };
+
+  nodes.forEach(node => {
+    const g = svg.append('g').attr('transform', `translate(${node.x}, ${node.y})`).style('cursor','pointer');
+    const r = 30;
+    g.append('rect').attr('x', -r).attr('y', -20).attr('width', r*2).attr('height', 40).attr('rx', 8)
+      .attr('fill', node.solved ? C.pass : 'none')
+      .attr('fill-opacity', node.solved ? 0.15 : 0)
+      .attr('stroke', node.solved ? C.pass : C.high)
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', node.solved ? 'none' : '6,4');
+
+    // Multi-line label
+    const lines = node.label.split('\n');
+    lines.forEach((line, i) => {
+      g.append('text').attr('y', -5 + i * 14 - (lines.length-1)*7)
+        .attr('text-anchor','middle').attr('font-size', 11).attr('font-weight', 600)
+        .attr('fill', node.solved ? C.pass : C.high).text(line);
+    });
+
+    g.on('mouseenter', (event) => {
+      tooltip.attr('opacity', 1).attr('transform', `translate(${node.x + 40}, ${node.y - 30})`);
+      ttText.text(descs[node.id]);
+    }).on('mouseleave', () => tooltip.attr('opacity', 0));
+  });
+});
+
+registerAnim('H2-discrete-continuous', (container) => {
+  const W = 500, H = 360;
+  const svg = createSVG(container, W, H);
+  const halfW = 210;
+
+  // Left: Continuous SDE world
+  const gL = svg.append('g').attr('transform', 'translate(20, 30)');
+  gL.append('text').attr('x', halfW/2).attr('y', 0).attr('text-anchor','middle')
+    .attr('font-size', 15).attr('font-weight', 700).attr('fill', C.info).text('連續 SDE 世界');
+  gL.append('text').attr('x', halfW/2).attr('y', 20).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('fill', C.textSec).text('定理 I：Σ > 0');
+
+  // Mini V_eff landscape
+  const xS = d3.scaleLinear().domain([-3, 3]).range([0, halfW]);
+  const yS = d3.scaleLinear().domain([0, 6]).range([200, 40]);
+  const tVals = d3.range(-3, 3.01, 0.1);
+  const veffLine = d3.line().x(d => d[0]).y(d => d[1]).curve(d3.curveBasis);
+  const vData = tVals.map(t => [xS(t), yS(0.25*t**4 - 2*t**2 + 4)]);
+  gL.append('path').datum(vData).attr('d', veffLine).attr('fill','none').attr('stroke', C.info).attr('stroke-width', 2);
+  gL.append('text').attr('x', halfW/2).attr('y', 220).attr('text-anchor','middle')
+    .attr('font-size', 11).attr('fill', C.muted).text('V_eff 景觀清晰');
+
+  // Right: Discrete Lyapunov world
+  const gR = svg.append('g').attr('transform', `translate(${20 + halfW + 50}, 30)`);
+  gR.append('text').attr('x', halfW/2).attr('y', 0).attr('text-anchor','middle')
+    .attr('font-size', 15).attr('font-weight', 700).attr('fill', C.pass).text('離散 Lyapunov 世界');
+  gR.append('text').attr('x', halfW/2).attr('y', 20).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('fill', C.textSec).text('定理 II：Σ → 0');
+
+  // Lyapunov bars
+  const hVals = [8, 15, 25, 40, 60];
+  const barXS = d3.scaleBand().domain(d3.range(5)).range([10, halfW-10]).padding(0.3);
+  hVals.forEach((h, i) => {
+    const eta = 0.05;
+    const lam = (1/5)*Math.log(Math.abs(1-eta*h));
+    const barH = Math.abs(lam) * 600;
+    const stable = lam < 0;
+    gR.append('rect').attr('x', barXS(i)).attr('y', 130 - (stable ? barH : 0)).attr('width', barXS.bandwidth())
+      .attr('height', barH).attr('fill', stable ? C.pass : C.fail).attr('rx', 2);
+    gR.append('text').attr('x', barXS(i) + barXS.bandwidth()/2).attr('y', 155)
+      .attr('text-anchor','middle').attr('font-size', 9).attr('fill', C.muted).text(`h=${h}`);
+  });
+  gR.append('text').attr('x', halfW/2).attr('y', 220).attr('text-anchor','middle')
+    .attr('font-size', 11).attr('fill', C.muted).text('Lyapunov 穩定性分析');
+
+  // Center crack/gap
+  const crackX = 20 + halfW + 15;
+  svg.append('line').attr('x1', crackX).attr('y1', 40).attr('x2', crackX).attr('y2', 280)
+    .attr('stroke', C.fail).attr('stroke-width', 3).attr('stroke-dasharray','8,4');
+  svg.append('text').attr('x', crackX).attr('y', 300).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('font-weight', 700).attr('fill', C.fail).text('Σ → 0 斷裂');
+
+  // Bottom label
+  svg.append('text').attr('x', W/2).attr('y', 340).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('fill', C.high).text('統一需要處理此極限——第五道開放關卡');
+});
 
 // ================================================================
 // INITIALIZATION
