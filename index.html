@@ -1482,7 +1482,248 @@ registerAnim('C2-3-closed-loop', (container) => {
 });
 
 // ========== SECTION D F1+F2 ==========
-// Task 6
+registerAnim('D1-1-kramers', (container) => {
+  const W = 500, H = 320, margin = { top: 20, right: 100, bottom: 40, left: 50 };
+  const { canvas, ctx, w: cw, h: ch } = createCanvas(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+
+  const a = 0.25, b = 2, c = 4;
+  const Vprime = (t) => doubleWellPrime(t, a, b);
+  const sigmaFn = () => 1; // constant noise for simplicity
+  let eta = 0.01, tau = eta;
+  let theta = 2; // start in bad well B
+  let steps = 0;
+
+  const xS = d3.scaleLinear().domain([-3.5, 3.5]).range([margin.left, margin.left + pw]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.05);
+  const vVals = thetaVals.map(t => doubleWell(t, a, b, c));
+  const yS = d3.scaleLinear().domain([d3.min(vVals) - 0.5, d3.max(vVals) + 1]).range([margin.top + ph, margin.top]);
+
+  createSlider(container, {
+    label: 'η', min: 0.001, max: 0.5, step: 0.001, default: 0.01,
+    format: v => v.toFixed(3),
+    onChange: v => { eta = v; tau = v; theta = 2; steps = 0; }
+  });
+
+  function draw() {
+    ctx.clearRect(0, 0, cw, ch);
+    // Potential curve
+    ctx.beginPath(); ctx.strokeStyle = C.text; ctx.lineWidth = 2;
+    thetaVals.forEach((t, i) => {
+      const x = xS(t), y = yS(vVals[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }); ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('A (好)', xS(-2.2), yS(doubleWell(-2, a, b, c)) + 20);
+    ctx.fillStyle = C.fail;
+    ctx.fillText('B (壞)', xS(1.5), yS(doubleWell(2, a, b, c)) + 20);
+
+    // Simulate
+    for (let i = 0; i < 10; i++) {
+      theta = emStep(theta, Vprime, sigmaFn, tau, 0.01);
+      theta = Math.max(-3.4, Math.min(3.4, theta));
+      steps++;
+    }
+
+    // Particle
+    ctx.beginPath();
+    ctx.arc(xS(theta), yS(doubleWell(theta, a, b, c)), 6, 0, Math.PI * 2);
+    ctx.fillStyle = C.info; ctx.fill();
+
+    // Info
+    const kramersTime = tau > 0.001 ? (1/tau) * Math.exp(2/tau) : Infinity;
+    ctx.fillStyle = C.textSec; ctx.font = '12px sans-serif';
+    ctx.fillText(`步數: ${steps}`, W - 95, margin.top + 20);
+    ctx.fillText(`Kramers 時間:`, W - 95, margin.top + 40);
+    const timeStr = kramersTime > 1e10 ? kramersTime.toExponential(1) : kramersTime.toFixed(0);
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillStyle = kramersTime > 1e6 ? C.fail : C.pass;
+    ctx.fillText(`≈ ${timeStr}`, W - 95, margin.top + 60);
+  }
+
+  let frame = 0;
+  function animate() {
+    const reg = animRegistry['D1-1-kramers'];
+    if (!reg || !reg.playing) return;
+    frame++;
+    if (frame % 2 === 0) draw();
+    reg.rafId = requestAnimationFrame(animate);
+  }
+  if (!reducedMotion) { animRegistry['D1-1-kramers'].playing = true; animRegistry['D1-1-kramers'].rafId = requestAnimationFrame(animate); }
+  else draw();
+});
+
+registerAnim('D1-2-mixing', (container) => {
+  const W = 500, H = 260, margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const xS = d3.scaleLog().domain([0.001, 1]).range([0, pw]);
+  const yS = d3.scaleLog().domain([1, 1e12]).range([ph, 0]);
+
+  // Axes
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5, '.3f')).selectAll('text').attr('font-size', 11);
+  g.append('g').call(d3.axisLeft(yS).ticks(6, '.0e')).selectAll('text').attr('font-size', 11);
+  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor', 'middle').attr('font-size', 13).attr('fill', C.textSec).text('η');
+
+  // Mixing time curve τ_mix ~ exp(C/η)
+  const etaVals = d3.range(0.005, 1, 0.005);
+  const mixLine = d3.line().x(d => xS(d[0])).y(d => yS(Math.min(d[1], 1e12))).defined(d => d[1] >= 1 && d[1] <= 1e12);
+  const mixData = etaVals.map(e => [e, Math.exp(2/e) / e]);
+  g.append('path').datum(mixData).attr('d', mixLine).attr('fill', 'none').attr('stroke', C.fail).attr('stroke-width', 2);
+  g.append('text').attr('x', xS(0.3)).attr('y', yS(mixData.find(d => Math.abs(d[0]-0.3)<0.01)?.[1] || 1e3) - 10)
+    .attr('font-size', 11).attr('fill', C.fail).text('τ_mix');
+
+  // Training budget line (draggable)
+  let Ttrain = 1e5;
+  const trainLine = g.append('line').attr('x1', 0).attr('x2', pw)
+    .attr('y1', yS(Ttrain)).attr('y2', yS(Ttrain)).attr('stroke', C.info).attr('stroke-width', 2);
+  const trainLabel = g.append('text').attr('x', pw - 5).attr('text-anchor', 'end')
+    .attr('font-size', 11).attr('fill', C.info);
+
+  // Danger zone
+  const dangerRect = g.append('rect').attr('fill', C.fail).attr('opacity', 0.08);
+
+  function updateTrain(y) {
+    Ttrain = yS.invert(y);
+    trainLine.attr('y1', y).attr('y2', y);
+    trainLabel.attr('y', y - 5).text(`T_train = ${Ttrain.toExponential(0)}`);
+    // Find intersection
+    const crossEta = mixData.find(d => d[1] <= Ttrain);
+    const crossX = crossEta ? xS(crossEta[0]) : 0;
+    dangerRect.attr('x', 0).attr('y', 0).attr('width', crossX).attr('height', ph);
+  }
+  updateTrain(yS(1e5));
+
+  // Drag behavior
+  const drag = d3.drag().on('drag', (event) => {
+    const y = Math.max(0, Math.min(ph, event.y));
+    updateTrain(y);
+  });
+  trainLine.call(drag).style('cursor', 'ns-resize');
+});
+
+// D2 linked state
+getState('D2-eta', 0.05);
+
+registerAnim('D2-1-diverge', (container) => {
+  const W = 500, H = 320, margin = { top: 20, right: 20, bottom: 40, left: 50 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // L = (1/2)·10·θ², samples: ℓ1=(1/2)·18·θ², ℓ2=(1/2)·2·θ²
+  const hessians = [18, 2];
+  let eta = 0.05;
+  const maxT = 100;
+
+  const xS = d3.scaleLinear().domain([0, maxT]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([-5, 5]).range([ph, 0]);
+
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size', 12);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size', 12);
+  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor', 'middle').attr('font-size', 13).attr('fill', C.textSec).text('t');
+  g.append('text').attr('x', -35).attr('y', ph/2).attr('text-anchor', 'middle').attr('font-size', 13).attr('fill', C.textSec)
+    .attr('transform', `rotate(-90,-35,${ph/2})`).text('θ_t');
+
+  // Critical line marker
+  const critLine = g.append('line').attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', ph)
+    .attr('stroke', C.warn).attr('stroke-dasharray', '5,5').attr('stroke-width', 1.5).attr('opacity', 0);
+
+  const trajectoryPath = g.append('path').attr('fill', 'none').attr('stroke-width', 2);
+
+  function simulate(eta) {
+    let theta = 1;
+    const trajectory = [[0, theta]];
+    for (let t = 1; t <= maxT; t++) {
+      const h = hessians[Math.floor(Math.random() * 2)];
+      theta = theta * (1 - eta * h);
+      if (Math.abs(theta) > 100) { trajectory.push([t, theta > 0 ? 5.5 : -5.5]); break; }
+      trajectory.push([t, theta]);
+    }
+    return trajectory;
+  }
+
+  function update(newEta) {
+    eta = newEta;
+    setState('D2-eta', eta);
+    const traj = simulate(eta);
+    const stable = eta < 2/18;
+    const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(Math.max(-5, Math.min(5, d[1])))).curve(d3.curveLinear);
+    trajectoryPath.attr('d', lineGen(traj)).attr('stroke', stable ? C.pass : C.fail);
+
+    // Show divergence indicator
+    if (!stable && traj.length < maxT) {
+      const lastPt = traj[traj.length - 1];
+      g.selectAll('.diverge-label').remove();
+      g.append('text').attr('class', 'diverge-label')
+        .attr('x', xS(lastPt[0])).attr('y', lastPt[1] > 0 ? 10 : ph - 5)
+        .attr('font-size', 14).attr('fill', C.fail).attr('font-weight', 700).text('→ ∞');
+    } else {
+      g.selectAll('.diverge-label').remove();
+    }
+  }
+
+  createSlider(container, {
+    label: 'η', min: 0.01, max: 0.25, step: 0.005, default: 0.05,
+    format: v => `${v.toFixed(3)} ${v > 2/18 ? '(不穩定!)' : ''}`,
+    onChange: update
+  });
+  update(0.05);
+});
+
+registerAnim('D2-2-lyapunov-diverge', (container) => {
+  const W = 500, H = 260, margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const xS = d3.scaleLinear().domain([0, 0.25]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([-0.3, 0.3]).range([ph, 0]);
+
+  g.append('g').attr('transform', `translate(0,${ph})`).call(d3.axisBottom(xS).ticks(5)).selectAll('text').attr('font-size', 12);
+  g.append('g').call(d3.axisLeft(yS).ticks(5).tickFormat(d3.format('.2f'))).selectAll('text').attr('font-size', 12);
+  g.append('text').attr('x', pw/2).attr('y', ph+35).attr('text-anchor','middle').attr('font-size', 13).attr('fill', C.textSec).text('η');
+
+  // Zero line
+  g.append('line').attr('x1',0).attr('x2',pw).attr('y1',yS(0)).attr('y2',yS(0)).attr('stroke', C.muted).attr('stroke-dasharray','3,3');
+
+  // Background
+  const etaVals = d3.range(0.001, 0.25, 0.001);
+  const lambdaFn = (e) => {
+    const v1 = Math.abs(1 - 18*e), v2 = Math.abs(1 - 2*e);
+    return (v1 > 0 && v2 > 0) ? 0.5*(Math.log(v1) + Math.log(v2)) : 0;
+  };
+  const curveData = etaVals.map(e => [e, lambdaFn(e)]).filter(d => Math.abs(d[1]) < 0.3);
+  const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveBasis);
+  g.append('path').datum(curveData).attr('d', lineGen).attr('fill','none').attr('stroke', C.text).attr('stroke-width', 2);
+
+  // Zero crossing marker
+  const zeroCross = 2/18;
+  g.append('circle').attr('cx', xS(zeroCross)).attr('cy', yS(0)).attr('r', 5).attr('fill', C.fail);
+  g.append('text').attr('x', xS(zeroCross)).attr('y', yS(0)+18).attr('text-anchor','middle')
+    .attr('font-size', 10).attr('fill', C.fail).text(`η_c ≈ ${zeroCross.toFixed(3)}`);
+
+  // Regions
+  g.append('rect').attr('x', xS(zeroCross)).attr('y', 0).attr('width', pw - xS(zeroCross)).attr('height', ph)
+    .attr('fill', C.fail).attr('opacity', 0.06);
+  g.append('rect').attr('x', 0).attr('y', 0).attr('width', xS(zeroCross)).attr('height', ph)
+    .attr('fill', C.pass).attr('opacity', 0.06);
+
+  // η indicator line (linked with D2-1)
+  const indicator = g.append('line').attr('y1', 0).attr('y2', ph)
+    .attr('stroke', C.info).attr('stroke-width', 2).attr('stroke-dasharray','3,3');
+
+  function updateIndicator(eta) {
+    indicator.attr('x1', xS(eta)).attr('x2', xS(eta));
+  }
+
+  onState('D2-eta', updateIndicator);
+  updateIndicator(0.05);
+});
 
 // ========== SECTION D F3+F4 ==========
 // Task 7
