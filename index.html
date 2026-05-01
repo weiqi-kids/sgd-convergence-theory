@@ -1726,7 +1726,177 @@ registerAnim('D2-2-lyapunov-diverge', (container) => {
 });
 
 // ========== SECTION D F3+F4 ==========
-// Task 7
+registerAnim('D3-1-equal-wells', (container) => {
+  const W = 500, H = 360, margin = { top: 30, right: 20, bottom: 40, left: 50 };
+  const { canvas, ctx, w: cw, h: ch } = createCanvas(container, W, H);
+  const a = 0.25, b = 2, c = 4;
+  const sigmaFn = () => 2; // equal Σ everywhere → equal V_eff
+  const Vprime = (t) => doubleWellPrime(t, a, b);
+  const tau = 0.5;
+  const N = 50;
+  let particles = Array.from({length: N}, () => (Math.random()-0.5)*6);
+  const xS = d3.scaleLinear().domain([-3.5, 3.5]).range([margin.left, margin.left + W - margin.left - margin.right]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.05);
+  const vVals = thetaVals.map(t => doubleWell(t, a, b, c));
+  const yS = d3.scaleLinear().domain([d3.min(vVals)-0.5, d3.max(vVals)+1]).range([H - margin.bottom, margin.top]);
+
+  function draw() {
+    ctx.clearRect(0, 0, cw, ch);
+    // Title
+    ctx.fillStyle = C.textSec; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('V_eff 等深 → Σ_A/H_A = Σ_B/H_B', margin.left, 15);
+    // Curve
+    ctx.beginPath(); ctx.strokeStyle = C.text; ctx.lineWidth = 2;
+    thetaVals.forEach((t, i) => { const x = xS(t), y = yS(vVals[i]); i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
+    ctx.stroke();
+    // Labels
+    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif'; ctx.fillText('A', xS(-2)-4, yS(doubleWell(-2,a,b,c))+20);
+    ctx.fillStyle = C.fail; ctx.fillText('B', xS(2)-4, yS(doubleWell(2,a,b,c))+20);
+    // Particles
+    for (let i=0; i<N; i++) { particles[i] = emStep(particles[i], Vprime, sigmaFn, tau, 0.01); particles[i] = Math.max(-3.4,Math.min(3.4,particles[i])); }
+    ctx.fillStyle = C.info;
+    particles.forEach(p => { ctx.beginPath(); ctx.arc(xS(p), yS(doubleWell(p,a,b,c)), 3, 0, Math.PI*2); ctx.fill(); });
+    // Count
+    const cA = particles.filter(p=>p<0).length, cB = N-cA;
+    ctx.fillStyle = C.warn; ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(`A: ${cA}  B: ${cB}  ≈ 50/50`, W/2-60, H-10);
+  }
+  let frame=0;
+  function animate() {
+    const reg = animRegistry['D3-1-equal-wells']; if (!reg||!reg.playing) return;
+    frame++; if (frame%2===0) draw();
+    reg.rafId = requestAnimationFrame(animate);
+  }
+  if (!reducedMotion) { animRegistry['D3-1-equal-wells'].playing=true; animRegistry['D3-1-equal-wells'].rafId=requestAnimationFrame(animate); }
+  else draw();
+});
+
+registerAnim('D3-2-selectivity', (container) => {
+  const W = 500, H = 260;
+  const svg = createSVG(container, W, H);
+  const g = svg.append('g').attr('transform', 'translate(50, 20)');
+
+  let ratioA = 0.5, ratioB = 2.0;
+  const ratioText = g.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle')
+    .attr('font-size', 40).attr('font-weight', 700);
+  const ratioLabel = g.append('text').attr('x', 200).attr('y', 90).attr('text-anchor', 'middle')
+    .attr('font-size', 14).attr('fill', C.textSec).text('p(A)/p(B)');
+  const warnText = g.append('text').attr('x', 200).attr('y', 120).attr('text-anchor', 'middle')
+    .attr('font-size', 16).attr('font-weight', 700).attr('fill', C.fail).attr('opacity', 0);
+
+  function update() {
+    const pref = ratioB / ratioA;
+    const close = Math.abs(ratioA - ratioB) < 0.3;
+    ratioText.text(pref.toFixed(1)).attr('fill', close ? C.warn : C.pass);
+    warnText.text('選擇力消失！').attr('opacity', close ? 1 : 0);
+  }
+
+  createSlider(container, {
+    label: 'Σ_A/H_A', min: 0.1, max: 5.0, step: 0.1, default: 0.5,
+    format: v => v.toFixed(1), onChange: v => { ratioA = v; update(); }
+  });
+  createSlider(container, {
+    label: 'Σ_B/H_B', min: 0.1, max: 5.0, step: 0.1, default: 2.0,
+    format: v => v.toFixed(1), onChange: v => { ratioB = v; update(); }
+  });
+  update();
+});
+
+registerAnim('D4-1-reversal', (container) => {
+  const W = 500, H = 360, margin = { top: 30, right: 20, bottom: 40, left: 50 };
+  const { canvas, ctx, w: cw, h: ch } = createCanvas(container, W, H);
+  const a = 0.25, b = 2, c = 4;
+  // REVERSED: good well A has HIGH Σ, bad well B has LOW Σ
+  const sigmaFn = (t) => 10.5 + 9.5 * Math.tanh(t); // Σ(-2)≈1 → reversed to Σ(-2)≈20, Σ(2)≈1
+  // Actually: Σ_A=20 at θ=-2, Σ_B=1 at θ=+2
+  // tanh(-2)≈-0.96 → 10.5 + 9.5*(-0.96)=10.5-9.12=1.38 (close to 1)
+  // tanh(2)≈0.96 → 10.5+9.12=19.62 (close to 20)
+  // Wait, this gives Σ_A(θ=-2)≈1.38 and Σ_B(θ=2)≈19.62 — that's reversed from what we want!
+  // We want Σ_A=20 (good well), Σ_B=1 (bad well)
+  // So: sigmaFn = (t) => 10.5 - 9.5 * Math.tanh(t)
+  // tanh(-2)≈-0.96 → 10.5+9.12=19.62≈20 ✓, tanh(2)≈0.96 → 10.5-9.12=1.38≈1 ✓
+  const sigmaFnFixed = (t) => 10.5 - 9.5 * Math.tanh(t);
+  const Vprime = (t) => doubleWellPrime(t, a, b);
+  const tau = 0.3;
+  const N = 50;
+  let particles = Array.from({length: N}, () => (Math.random()-0.5)*6);
+  const xS = d3.scaleLinear().domain([-3.5, 3.5]).range([margin.left, W - margin.right]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.05);
+  const vVals = thetaVals.map(t => doubleWell(t, a, b, c));
+  const yS = d3.scaleLinear().domain([d3.min(vVals)-0.5, d3.max(vVals)+1]).range([H-margin.bottom, margin.top]);
+
+  function draw() {
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.beginPath(); ctx.strokeStyle = C.text; ctx.lineWidth = 2;
+    thetaVals.forEach((t, i) => { const x=xS(t), y=yS(vVals[i]); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }); ctx.stroke();
+    // Well labels with contradiction
+    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('A ✓好 (Σ=20)', xS(-2.8), yS(doubleWell(-2,a,b,c))+20);
+    ctx.fillStyle = C.fail;
+    ctx.fillText('B ✗壞 (Σ=1)', xS(1.2), yS(doubleWell(2,a,b,c))+20);
+    // Particles
+    for (let i=0;i<N;i++) { particles[i]=emStep(particles[i], Vprime, sigmaFnFixed, tau, 0.01); particles[i]=Math.max(-3.4,Math.min(3.4,particles[i])); }
+    ctx.fillStyle = C.info;
+    particles.forEach(p => { ctx.beginPath(); ctx.arc(xS(p), yS(doubleWell(p,a,b,c)), 3, 0, Math.PI*2); ctx.fill(); });
+    const cA=particles.filter(p=>p<0).length, cB=N-cA;
+    ctx.fillStyle = C.fail; ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(`多數粒子在壞井 B: ${cB}/${N}`, W/2-80, H-10);
+  }
+  let frame=0;
+  function animate() {
+    const reg = animRegistry['D4-1-reversal']; if (!reg||!reg.playing) return;
+    frame++; if (frame%2===0) draw();
+    reg.rafId = requestAnimationFrame(animate);
+  }
+  if (!reducedMotion) { animRegistry['D4-1-reversal'].playing=true; animRegistry['D4-1-reversal'].rafId=requestAnimationFrame(animate); }
+  else draw();
+});
+
+registerAnim('D4-2-diversity', (container) => {
+  const W = 500, H = 360;
+  const svg = createSVG(container, W, H);
+  const n = 6;
+
+  [{label:'好解 A', subtitle:'梯度方向散開 → Σ 大', x: 20, color: C.pass,
+    angles: [0, 60, 120, 180, 240, 300]},
+   {label:'壞解 B', subtitle:'梯度方向平行 → Σ 小', x: 270, color: C.fail,
+    angles: [85, 88, 92, 95, 82, 90]}].forEach(config => {
+    const g = svg.append('g').attr('transform', `translate(${config.x}, 20)`);
+    g.append('text').attr('x', 100).attr('y', 0).attr('text-anchor','middle')
+      .attr('font-size', 14).attr('font-weight', 600).attr('fill', config.color).text(config.label);
+    g.append('text').attr('x', 100).attr('y', 18).attr('text-anchor','middle')
+      .attr('font-size', 11).attr('fill', C.muted).text(config.subtitle);
+
+    const cx = 100, cy = 130, r = 70;
+    // Data points around center
+    config.angles.forEach((angle, i) => {
+      const rad = angle * Math.PI / 180;
+      const dx = Math.cos(rad) * r, dy = Math.sin(rad) * r;
+      g.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 4).attr('fill', C.text);
+      g.append('line').attr('x1', cx).attr('y1', cy).attr('x2', cx+dx*0.7).attr('y2', cy+dy*0.7)
+        .attr('stroke', config.color).attr('stroke-width', 2);
+      g.append('polygon')
+        .attr('points', `${cx+dx*0.7-3},${cy+dy*0.7-3} ${cx+dx*0.7+3},${cy+dy*0.7+3} ${cx+dx*0.7+3},${cy+dy*0.7-3}`)
+        .attr('fill', config.color).attr('opacity', 0);
+      // Arrowhead
+      const ax = cx + dx * 0.7, ay = cy + dy * 0.7;
+      const tipLen = 8;
+      g.append('polygon')
+        .attr('points', `${ax},${ay} ${ax-tipLen*Math.cos(rad-0.4)},${ay-tipLen*Math.sin(rad-0.4)} ${ax-tipLen*Math.cos(rad+0.4)},${ay-tipLen*Math.sin(rad+0.4)}`)
+        .attr('fill', config.color);
+    });
+
+    // Σ value
+    const sigma = config.angles.length > 3 ? (config.color === C.pass ? 20 : 1) : 1;
+    g.append('text').attr('x', 100).attr('y', 230).attr('text-anchor','middle')
+      .attr('font-size', 16).attr('font-weight', 700).attr('fill', config.color).text(`Σ = ${sigma}`);
+  });
+
+  // Warning at bottom
+  svg.append('text').attr('x', 250).attr('y', 290).attr('text-anchor','middle')
+    .attr('font-size', 15).attr('font-weight', 700).attr('fill', C.fail)
+    .text('SGD 的低噪聲偏好 ≠ 泛化偏好');
+});
 
 // ========== SECTION E1+E2 ==========
 // Task 8
