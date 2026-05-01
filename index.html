@@ -203,6 +203,7 @@ footer a:hover { text-decoration: underline; }
   <input type="checkbox" id="nav-toggle" class="hamburger-check">
   <label for="nav-toggle" class="hamburger">☰</label>
   <div class="navbar-links">
+    <a href="#prologue">前言</a>
     <a href="#model">模型</a>
     <a href="#theorem1">定理 I</a>
     <a href="#theorem2">定理 II</a>
@@ -210,6 +211,7 @@ footer a:hover { text-decoration: underline; }
     <a href="#concepts">概念</a>
     <a href="#noise-roles">噪聲</a>
     <a href="#predictions">預測</a>
+    <a href="#conclusion">結語</a>
     <a href="#open">開放</a>
   </div>
 </nav>
@@ -221,17 +223,48 @@ footer a:hover { text-decoration: underline; }
 <section class="hero" id="hero">
   <h1>SGD 為何收斂到好解？</h1>
   <p class="subtitle">其普遍成立的充分條件是什麼？</p>
-  <p class="conclusion">SGD 收斂到好解<strong>不是</strong>無條件的普遍事實——存在四類嚴格反例使其失敗。但在四道關卡全部通過時，SGD 的隱式正則化機制可以被完整證明。<br>前三個是你可以透過調整演算法（例如學習率）來控制的；第四個則取決於問題本身——數據的結構是否讓「簡單的函數」恰好是「正確的函數」。</p>
+  <div class="animation-container h-350" id="anim-hero-potential">
+    <div class="d3-canvas"></div>
+  </div>
+  <div class="scroll-hint">↓</div>
+</section>
+
+<!-- PROLOGUE: 前言 -->
+<section id="prologue">
+  <h2>前言：從 SGD 到「好解」</h2>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">什麼是 SGD？</h3>
+  <p class="intro">機器學習的核心任務是找到一組參數，讓模型的預測盡可能準確。為此，我們需要最小化一個「損失函數」——它衡量模型犯了多少錯。</p>
+  <p>最直觀的方法是「梯度下降」（Gradient Descent, GD）：計算損失函數相對於所有參數的梯度（也就是「往哪個方向調整參數，損失會下降最快」），然後朝那個方向走一步。重複這個過程，參數會逐漸移動到損失較低的位置。</p>
+  <p>但現實中的資料集動輒百萬筆。每走一步就要把所有資料都算一遍，太慢了。<strong>隨機梯度下降（Stochastic Gradient Descent, SGD）</strong>的做法是：每一步只隨機抽一筆（或一小批）資料來估算梯度，然後就往那個方向走。這讓每一步的計算量大幅降低，但代價是每一步的方向不再精準——帶有隨機的「噪聲」。</p>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">為什麼「收斂到好解」是個大問題？</h3>
+  <p>損失函數的地形通常像一片崎嶇的山地，有很多個「盆地」（局部極小值）。有些盆地是「好解」——模型不但在訓練資料上表現好，面對沒見過的新資料也能做出正確預測（泛化好）。有些盆地是「壞解」——模型死記了訓練資料的噪聲，對新資料一塌糊塗（過擬合）。</p>
+  <p>神奇的是，實驗反覆顯示：SGD 往往能找到好解，即使好解在參數空間中只佔極小的比例。這不是巧合——SGD 隨機性本身就是一種<strong>隱式正則化</strong>，它天然偏好某類解。但這個偏好究竟是什麼？它在什麼條件下成立？什麼條件下會失效？</p>
+  <p>這就是本文要回答的問題。</p>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">本文的核心結論</h3>
+  <p>SGD 收斂到好解<strong>不是</strong>無條件的普遍事實——存在四類嚴格反例使其失敗。但在四道關卡全部通過時，SGD 的隱式正則化機制可以被完整證明：</p>
   <ul class="conditions-list">
     <li><span class="check">✓</span> ¬F1：學習率夠大使盆地間混合</li>
     <li><span class="check">✓</span> ¬F2：學習率不至於太大使 SGD 發散</li>
     <li><span class="check">✓</span> ¬F3：好解與壞解的 per-sample 靈敏度有差異</li>
     <li><span class="check">✓</span> ¬F4：低靈敏度確實對應好泛化</li>
   </ul>
-  <div class="animation-container h-350" id="anim-hero-potential">
-    <div class="d3-canvas"></div>
-  </div>
-  <div class="scroll-hint">↓</div>
+  <p>前三個是你可以透過調整演算法（例如學習率）來控制的；第四個則取決於問題本身——數據的結構是否讓「簡單的函數」恰好是「正確的函數」。</p>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">閱讀地圖</h3>
+  <p>本文的結構如下：</p>
+  <ol style="font-size:var(--text-sm);line-height:1.8;padding-left:1.5rem">
+    <li><strong>形式模型</strong>——建立共同語言：SGD 的數學定義、什麼叫「好解」</li>
+    <li><strong>定理 I（非插值域）</strong>——當訓練損失不為零時，SGD 的噪聲如何偏好泛化好的解</li>
+    <li><strong>定理 II（插值域）</strong>——當訓練損失為零時，SGD 的離散本性如何篩選簡單的解</li>
+    <li><strong>四類反例</strong>——四道關卡各自被違反時，SGD 如何失敗</li>
+    <li><strong>概念問答</strong>——澄清五個常見困惑（平坦性 vs 簡單性、最小範數、detailed balance 等）</li>
+    <li><strong>噪聲的四重角色</strong>——統整噪聲在不同機制域中的作用</li>
+    <li><strong>可驗證預測</strong>——五個可被實驗推翻的具體預測</li>
+    <li><strong>未解決的關口</strong>——五道尚待突破的數學障礙</li>
+  </ol>
 </section>
 
 <!-- SECTION B: 形式模型 -->
@@ -687,10 +720,32 @@ footer a:hover { text-decoration: underline; }
   </div>
 </section>
 
+<!-- CONCLUSION: 結語 -->
+<section id="conclusion">
+  <h2>回歸命題：這篇報告解決了什麼？</h2>
+  <p class="intro">在進入未解決的問題之前，讓我們回顧一下整個論證鏈。</p>
+  <p>我們從一個簡單的觀察出發：SGD 在實踐中表現得比理論預期更好。它往往能在損失函數的無數個極小值中，找到泛化良好的解。這篇報告的目標是嚴格回答「為什麼」和「什麼時候」。</p>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">我們建立了什麼</h3>
+  <p><strong>兩個閉環定理</strong>，各自在不同的機制域中完整回答了「SGD 為何偏好好解」：</p>
+  <ul style="font-size:var(--text-sm);line-height:1.8;padding-left:1.5rem">
+    <li><strong>定理 I（非插值域）</strong>：SGD 的隨機噪聲是乘性的——在不同位置大小不同。這使得 SGD 的穩態分佈不是均勻地分佈在所有極小值上，而是偏好噪聲比 Σ/H 小的盆地。而噪聲比小的盆地，恰好是 leave-one-out 穩定性高的盆地，也就是泛化好的盆地。整條鏈環環相扣。</li>
+    <li><strong>定理 II（插值域）</strong>：當訓練損失為零時，連續近似完全失效。但 SGD 的離散更新步長成為天然的篩選器——學習率 η 決定了哪些解的 per-sample Hessian 太大（太敏感），這些解會被指數增長的 Lyapunov 不穩定性排斥。留下來的解有低 Jacobian 複雜度，從而有可證明的泛化界。</li>
+  </ul>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">我們也劃清了邊界</h3>
+  <p><strong>四類反例</strong> (F1-F4) 精確描述了理論的適用範圍。SGD 收斂到好解等價於四個條件同時成立：學習率不太小也不太大、好壞解的噪聲特徵有差異、且低噪聲確實對應好泛化。任何一個條件被違反，理論就不再成立——這不是缺陷，而是邊界的精確刻劃。</p>
+
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">一個統一的選擇原理</h3>
+  <p>不存在單一的普遍充分條件，但存在一個統一的洞察：<strong>SGD 的隨機性充當 per-sample 靈敏度的篩選器</strong>。在非插值域，這表現為穩態分佈偏好低 Σ/H 的盆地；在插值域，這表現為 Lyapunov 不穩定性排斥高 h_max 的解。形式不同，本質相通。</p>
+
+  <p>但這個理論還不完整。以下是五個尚未解決的關口。</p>
+</section>
+
 <!-- SECTION H: 未解決問題 -->
 <section id="open">
   <h2>H. 未解決的關口</h2>
-  <p class="intro">這個理論走到哪裡了？還有五道關卡尚未突破。</p>
+  <p class="intro">以上的理論框架在一維、離散正交、和特定條件下是完整的。但要推廣到現實中的深度學習，還需要突破以下五道障礙。</p>
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-H1-research-map">
       <h3>研究地圖</h3>
