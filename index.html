@@ -1899,7 +1899,219 @@ registerAnim('D4-2-diversity', (container) => {
 });
 
 // ========== SECTION E1+E2 ==========
-// Task 8
+registerAnim('E1-1-reparam', (container) => {
+  const W = 500, H = 320, margin = { top: 30, right: 20, bottom: 40, left: 40 };
+  const svg = createSVG(container, W, H);
+  const halfW = (W - margin.left - margin.right) / 2 - 10;
+  const ph = H - margin.top - margin.bottom;
+
+  // Original: L(θ) = θ² around θ*=0, H=2, Σ=1 → Σ/H = 0.5
+  const H_orig = 2, Sigma_orig = 1, ratio = Sigma_orig / H_orig;
+  let alpha = 0;
+
+  const gL = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  const gR = svg.append('g').attr('transform', `translate(${margin.left + halfW + 30},${margin.top})`);
+
+  gL.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle').attr('font-size', 13).attr('fill', C.textSec).text('θ 空間');
+  gR.append('text').attr('x', halfW/2).attr('y', -10).attr('text-anchor','middle').attr('font-size', 13).attr('fill', C.textSec).text('ϕ 空間');
+
+  const xS = d3.scaleLinear().domain([-3, 3]).range([0, halfW]);
+  const yS = d3.scaleLinear().domain([0, 10]).range([ph, 0]);
+  const tVals = d3.range(-3, 3.01, 0.1);
+  const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveBasis);
+
+  // Original curve (static)
+  const origData = tVals.map(t => [t, t*t]);
+  gL.append('path').datum(origData).attr('d', lineGen).attr('fill','none').attr('stroke', C.text).attr('stroke-width', 2);
+  const hText = gL.append('text').attr('x', halfW-5).attr('y', 20).attr('text-anchor','end').attr('font-size', 12);
+  const sText = gL.append('text').attr('x', halfW-5).attr('y', 38).attr('text-anchor','end').attr('font-size', 12);
+
+  // Transformed curve (dynamic)
+  const transPath = gR.append('path').attr('fill','none').attr('stroke', C.text).attr('stroke-width', 2);
+  const htText = gR.append('text').attr('x', halfW-5).attr('y', 20).attr('text-anchor','end').attr('font-size', 12);
+  const stText = gR.append('text').attr('x', halfW-5).attr('y', 38).attr('text-anchor','end').attr('font-size', 12);
+
+  // Invariant box (center)
+  const invBox = svg.append('g').attr('transform', `translate(${W/2}, ${H-30})`);
+  invBox.append('rect').attr('x', -80).attr('y', -18).attr('width', 160).attr('height', 36)
+    .attr('fill', C.surface).attr('stroke', C.warn).attr('stroke-width', 3).attr('rx', 6);
+  const invText = invBox.append('text').attr('text-anchor','middle').attr('y', 6)
+    .attr('font-size', 18).attr('font-weight', 700).attr('fill', C.warn);
+
+  function update(a) {
+    alpha = a;
+    // g(θ) = θ + α·sin(θ), g'(θ) = 1 + α·cos(θ)
+    const gPrime0 = 1 + alpha; // at θ=0
+    const H_trans = H_orig * gPrime0 * gPrime0;
+    const S_trans = Sigma_orig * gPrime0 * gPrime0;
+
+    hText.text(`H = ${H_orig.toFixed(1)}`).attr('fill', C.info);
+    sText.text(`Σ = ${Sigma_orig.toFixed(1)}`).attr('fill', C.info);
+    htText.text(`H̃ = ${H_trans.toFixed(1)}`).attr('fill', C.info);
+    stText.text(`Σ̃ = ${S_trans.toFixed(1)}`).attr('fill', C.info);
+    invText.text(`Σ/H = ${ratio.toFixed(2)} (不變)`);
+
+    // Transform loss curve
+    const transData = tVals.map(phi => {
+      const theta = phi + alpha * Math.sin(phi); // inverse approx
+      return [phi, theta * theta];
+    });
+    transPath.attr('d', lineGen(transData));
+  }
+
+  createSlider(container, {
+    label: 'α', min: 0, max: 3.0, step: 0.1, default: 0,
+    format: v => v.toFixed(1), onChange: update
+  });
+  update(0);
+});
+
+registerAnim('E1-2-three-quantities', (container) => {
+  const W = 500, H = 260;
+  const svg = createSVG(container, W, H);
+  const g = svg.append('g').attr('transform', 'translate(60, 30)');
+  const barW = 60, gap = 80, maxH = 160;
+
+  const labels = ['H (Flatness⁻¹)', 'Σ (Simplicity⁻¹)', 'Σ/H (不變量)'];
+  const presets = [
+    { H: 2, S: 1 }, // original
+    { H: 8, S: 4 }, // stretched
+    { H: 0.5, S: 0.25 }, // compressed
+  ];
+  let presetIdx = 0;
+
+  const bars = labels.map((label, i) => {
+    const x = i * (barW + gap);
+    g.append('text').attr('x', x + barW/2).attr('y', maxH + 25).attr('text-anchor','middle')
+      .attr('font-size', 11).attr('fill', C.textSec).text(label);
+    const bar = g.append('rect').attr('x', x).attr('width', barW).attr('rx', 4);
+    const valText = g.append('text').attr('x', x + barW/2).attr('text-anchor','middle')
+      .attr('font-size', 14).attr('font-weight', 700);
+    return { bar, valText };
+  });
+
+  function render(preset) {
+    const vals = [preset.H, preset.S, preset.S / preset.H];
+    const scale = d3.scaleLinear().domain([0, d3.max(vals) * 1.2]).range([0, maxH]);
+    bars.forEach((b, i) => {
+      const h = scale(vals[i]);
+      b.bar.transition().duration(600)
+        .attr('y', maxH - h).attr('height', h)
+        .attr('fill', i === 2 ? C.warn : C.info);
+      b.valText.transition().duration(600)
+        .attr('y', maxH - h - 5).text(vals[i].toFixed(2))
+        .attr('fill', i === 2 ? C.warn : C.text);
+    });
+  }
+
+  // Cycle button
+  const btn = svg.append('g').attr('transform', `translate(${W/2}, ${maxH + 80})`).style('cursor','pointer');
+  btn.append('rect').attr('x', -60).attr('y', -14).attr('width', 120).attr('height', 28)
+    .attr('fill', C.surface).attr('stroke', C.border).attr('rx', 4);
+  const btnText = btn.append('text').attr('text-anchor','middle').attr('y', 5)
+    .attr('font-size', 12).attr('fill', C.textSec).text('切換座標系 →');
+  btn.on('click', () => {
+    presetIdx = (presetIdx + 1) % presets.length;
+    render(presets[presetIdx]);
+    btnText.text(`座標系 ${presetIdx + 1}/3 →`);
+  });
+
+  render(presets[0]);
+});
+
+registerAnim('E2-1-rowspace', (container) => {
+  const W = 500, H = 260;
+  const svg = createSVG(container, W, H);
+  const g = svg.append('g').attr('transform', 'translate(50, 20)');
+  const pw = 400, ph = 200;
+
+  // 2D projection of row(X) plane
+  g.append('rect').attr('width', pw).attr('height', ph).attr('fill', C.surface).attr('opacity', 0.5).attr('rx', 4);
+  g.append('text').attr('x', pw/2).attr('y', ph+20).attr('text-anchor','middle').attr('font-size', 12).attr('fill', C.muted).text('row(X) 平面');
+
+  const xS = d3.scaleLinear().domain([-1, 3]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([-1, 2]).range([ph, 0]);
+
+  // w0 = 0
+  g.append('circle').attr('cx', xS(0)).attr('cy', yS(0)).attr('r', 5).attr('fill', C.info);
+  g.append('text').attr('x', xS(0)-10).attr('y', yS(0)+15).attr('font-size', 11).attr('fill', C.info).text('w₀=0');
+
+  // Target X†y
+  const target = [2.5, 1.2];
+  g.append('circle').attr('cx', xS(target[0])).attr('cy', yS(target[1])).attr('r', 7).attr('fill', C.pass);
+  g.append('text').attr('x', xS(target[0])+10).attr('y', yS(target[1])+5).attr('font-size', 11).attr('fill', C.pass).text('X†y');
+
+  // SGD path (zigzag in plane)
+  const sgdPoints = [[0,0]];
+  let pos = [0, 0];
+  for (let t = 0; t < 15; t++) {
+    const dir = [target[0]-pos[0], target[1]-pos[1]];
+    const noise = [(Math.random()-0.5)*0.6, (Math.random()-0.5)*0.4];
+    pos = [pos[0] + dir[0]*0.15 + noise[0], pos[1] + dir[1]*0.15 + noise[1]];
+    sgdPoints.push(pos.slice());
+  }
+  sgdPoints.push(target);
+
+  const pathGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1]));
+  g.append('path').datum(sgdPoints).attr('d', pathGen)
+    .attr('fill','none').attr('stroke', C.info).attr('stroke-width', 1.5).attr('stroke-dasharray','4,2');
+
+  g.append('text').attr('x', pw/2).attr('y', 15).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('fill', C.textSec).text('SGD 軌跡始終在 row(X) 平面上');
+});
+
+registerAnim('E2-2-sgd-vs-gd', (container) => {
+  const W = 500, H = 260;
+  const svg = createSVG(container, W, H);
+  const g = svg.append('g').attr('transform', 'translate(50, 20)');
+  const pw = 400, ph = 200;
+
+  g.append('rect').attr('width', pw).attr('height', ph).attr('fill', C.surface).attr('opacity', 0.3).attr('rx', 4);
+  const xS = d3.scaleLinear().domain([-0.5, 3]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([-0.5, 1.8]).range([ph, 0]);
+  const target = [2.5, 1.2];
+
+  // GD path (smooth curve)
+  const gdPoints = [[0,0]];
+  let gp = [0, 0];
+  for (let t = 0; t < 20; t++) {
+    const dir = [target[0]-gp[0], target[1]-gp[1]];
+    gp = [gp[0]+dir[0]*0.1, gp[1]+dir[1]*0.1];
+    gdPoints.push(gp.slice());
+  }
+  const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveBasis);
+  g.append('path').datum(gdPoints).attr('d', lineGen)
+    .attr('fill','none').attr('stroke', C.info).attr('stroke-width', 2.5);
+
+  // SGD path (zigzag)
+  const sgdPoints = [[0,0]];
+  let sp = [0, 0];
+  for (let t = 0; t < 20; t++) {
+    const dir = [target[0]-sp[0], target[1]-sp[1]];
+    const noise = [(Math.random()-0.5)*0.4, (Math.random()-0.5)*0.3];
+    sp = [sp[0]+dir[0]*0.12+noise[0], sp[1]+dir[1]*0.12+noise[1]];
+    sgdPoints.push(sp.slice());
+  }
+  const lineGen2 = d3.line().x(d => xS(d[0])).y(d => yS(d[1]));
+  g.append('path').datum(sgdPoints).attr('d', lineGen2)
+    .attr('fill','none').attr('stroke', C.fail).attr('stroke-width', 1.5).attr('opacity', 0.8);
+
+  // Points
+  g.append('circle').attr('cx', xS(0)).attr('cy', yS(0)).attr('r', 5).attr('fill', C.text);
+  g.append('text').attr('x', xS(0)-5).attr('y', yS(0)+18).attr('font-size', 11).text('w₀');
+  g.append('circle').attr('cx', xS(target[0])).attr('cy', yS(target[1])).attr('r', 7).attr('fill', C.pass);
+  g.append('text').attr('x', xS(target[0])+10).attr('y', yS(target[1])+5).attr('font-size', 11).attr('fill', C.pass).text('X†y');
+
+  // Legend
+  const leg = g.append('g').attr('transform', `translate(${pw-120}, 10)`);
+  leg.append('line').attr('x1',0).attr('x2',20).attr('y1',0).attr('y2',0).attr('stroke', C.info).attr('stroke-width',2.5);
+  leg.append('text').attr('x',25).attr('y',4).attr('font-size',12).attr('fill', C.textSec).text('GD（平滑）');
+  leg.append('line').attr('x1',0).attr('x2',20).attr('y1',18).attr('y2',18).attr('stroke', C.fail).attr('stroke-width',1.5);
+  leg.append('text').attr('x',25).attr('y',22).attr('font-size',12).attr('fill', C.textSec).text('SGD（鋸齒）');
+
+  g.append('text').attr('x', pw/2).attr('y', ph+20).attr('text-anchor','middle')
+    .attr('font-size', 12).attr('fill', C.textSec).text('線性模型中 SGD = GD（隱式偏差相同）');
+});
 
 // ========== SECTION E3+E4+E5 ==========
 // Task 9
