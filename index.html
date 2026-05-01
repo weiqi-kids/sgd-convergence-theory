@@ -825,7 +825,76 @@ function setupKaTeXLazy() {
 // ================================================================
 
 // ========== HERO ==========
-// Task 2
+registerAnim('hero-potential', (container) => {
+  const W = 700, H = 300, margin = { top: 20, right: 150, bottom: 40, left: 50 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Potential: V(θ) = 0.25θ⁴ - 2θ² + 4
+  const a = 0.25, b = 2, c = 4;
+  const xScale = d3.scaleLinear().domain([-3.5, 3.5]).range([0, pw]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.05);
+  const vVals = thetaVals.map(t => doubleWell(t, a, b, c));
+  const yScale = d3.scaleLinear().domain([d3.min(vVals) - 0.5, d3.max(vVals) + 0.5]).range([ph, 0]);
+
+  // Draw potential curve
+  const line = d3.line().x(d => xScale(d[0])).y(d => yScale(d[1])).curve(d3.curveBasis);
+  const pathData = thetaVals.map((t, i) => [t, vVals[i]]);
+  g.append('path').datum(pathData).attr('d', line)
+    .attr('fill', 'none').attr('stroke', C.text).attr('stroke-width', 2.5);
+
+  // Labels for wells
+  g.append('text').attr('x', xScale(-2)).attr('y', yScale(doubleWell(-2, a, b, c)) + 25)
+    .attr('text-anchor', 'middle').attr('fill', C.pass).attr('font-size', 14).attr('font-weight', 700).text('好解 A');
+  g.append('text').attr('x', xScale(2)).attr('y', yScale(doubleWell(2, a, b, c)) + 25)
+    .attr('text-anchor', 'middle').attr('fill', C.fail).attr('font-size', 14).attr('font-weight', 700).text('壞解 B');
+
+  // Particle
+  let theta = 1.8; // start near B
+  const tau = 0.3;
+  const sigmaFn = (t) => 1 + 0.5 * Math.sin(t) ** 2;
+  const Vprime = (t) => doubleWellPrime(t, a, b);
+  const particle = g.append('circle').attr('r', 7).attr('fill', C.info)
+    .attr('cx', xScale(theta)).attr('cy', yScale(doubleWell(theta, a, b, c)));
+
+  // Trail
+  const trail = [];
+  const trailLine = g.append('path').attr('fill', 'none').attr('stroke', C.info).attr('stroke-width', 1).attr('opacity', 0.4);
+  const trailGen = d3.line().x(d => xScale(d[0])).y(d => yScale(d[1])).curve(d3.curveBasis);
+
+  // Conditions on the right
+  const condG = svg.append('g').attr('transform', `translate(${W - 140}, ${margin.top + 10})`);
+  const conds = ['¬F1', '¬F2', '¬F3', '¬F4'];
+  conds.forEach((label, i) => {
+    condG.append('text').attr('x', 0).attr('y', i * 28).attr('fill', C.pass)
+      .attr('font-size', 16).attr('font-weight', 700).text('✓ ' + label);
+  });
+
+  // Animate
+  let frame = 0;
+  function animate() {
+    if (reducedMotion) return;
+    const reg = animRegistry['hero-potential'];
+    if (!reg || !reg.playing) return;
+    frame++;
+    if (frame % 2 === 0) { // 30fps
+      theta = emStep(theta, Vprime, sigmaFn, tau, 0.01);
+      theta = Math.max(-3.4, Math.min(3.4, theta));
+      const vt = doubleWell(theta, a, b, c);
+      particle.attr('cx', xScale(theta)).attr('cy', yScale(vt));
+      trail.push([theta, vt]);
+      if (trail.length > 200) trail.shift();
+      trailLine.attr('d', trailGen(trail));
+    }
+    reg.rafId = requestAnimationFrame(animate);
+  }
+  if (!reducedMotion) {
+    const reg = animRegistry['hero-potential'];
+    reg.playing = true;
+    reg.rafId = requestAnimationFrame(animate);
+  }
+});
 
 // ========== SECTION B ==========
 // Task 3
