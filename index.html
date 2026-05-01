@@ -2532,7 +2532,120 @@ registerAnim('F2-regime-map', (container) => {
 });
 
 // ========== SECTION G ==========
-// Task 11
+registerAnim('G1-dashboard', (container) => {
+  const W = 700, H = 260;
+  const svg = createSVG(container, W, H);
+  const cardW = 120, cardH = 180, gap = 10;
+  const startX = (W - 5*cardW - 4*gap) / 2;
+
+  const predictions = [
+    { id: 'P1', title: 'h_max 預測泛化', desc: '不同 η 訓練的模型，h_max 應與測試誤差正相關', miniChart: 'scatter' },
+    { id: 'P2', title: '臨界相變', desc: 'η ≈ 2/h_max 處存在尖銳相變——訓練損失從 0 跳到非零', miniChart: 'step' },
+    { id: 'P3', title: '噪聲結構 vs 量級', desc: 'SGD 噪聲替換為等量級各向同性高斯，泛化應下降', miniChart: 'bars' },
+    { id: 'P4', title: 'η 單調效應', desc: '插值域中 η 增大 → C 單調下降（直到 SGD 無法收斂）', miniChart: 'curve' },
+    { id: 'P5', title: 'F4 可觀測性', desc: '小數據大模型設定中，過擬合解的 Σ 低於泛化解的 Σ', miniChart: 'bars2' },
+  ];
+
+  const detailG = svg.append('g').attr('transform', `translate(${startX}, ${cardH + 20})`).attr('opacity', 0);
+  detailG.append('rect').attr('width', W - 2*startX).attr('height', 50).attr('fill', C.surface).attr('stroke', C.border).attr('rx', 4);
+  const detailText = detailG.append('text').attr('x', 10).attr('y', 30).attr('font-size', 12).attr('fill', C.text);
+
+  predictions.forEach((p, i) => {
+    const x = startX + i * (cardW + gap);
+    const g = svg.append('g').attr('transform', `translate(${x}, 10)`).style('cursor','pointer');
+    g.append('rect').attr('width', cardW).attr('height', cardH).attr('rx', 6)
+      .attr('fill', C.surface).attr('stroke', C.border);
+    g.append('text').attr('x', cardW/2).attr('y', 20).attr('text-anchor','middle')
+      .attr('font-size', 13).attr('font-weight', 700).attr('fill', C.info).text(p.id);
+    g.append('text').attr('x', cardW/2).attr('y', 38).attr('text-anchor','middle')
+      .attr('font-size', 10).attr('fill', C.textSec).text(p.title);
+
+    // Mini chart
+    const mg = g.append('g').attr('transform', 'translate(15, 50)');
+    const mw = cardW - 30, mh = 80;
+    if (p.miniChart === 'scatter') {
+      for (let j = 0; j < 8; j++) {
+        mg.append('circle').attr('cx', j/7*mw).attr('cy', mh - j/7*mh + (Math.random()-0.5)*15)
+          .attr('r', 3).attr('fill', C.info);
+      }
+    } else if (p.miniChart === 'step') {
+      mg.append('path').attr('d', `M0,${mh} L${mw*0.6},${mh} L${mw*0.6},10 L${mw},10`)
+        .attr('fill','none').attr('stroke', C.fail).attr('stroke-width', 2);
+    } else if (p.miniChart === 'bars') {
+      mg.append('rect').attr('x',10).attr('y',30).attr('width',25).attr('height',50).attr('fill', C.pass).attr('rx',2);
+      mg.append('rect').attr('x',55).attr('y',50).attr('width',25).attr('height',30).attr('fill', C.fail).attr('rx',2);
+    } else if (p.miniChart === 'curve') {
+      const pts = d3.range(0,1.01,0.1).map(x => [x*mw, mh*(1-Math.exp(-3*x))]);
+      mg.append('path').attr('d', d3.line()(pts.map(d => [d[0], mh-d[1]])))
+        .attr('fill','none').attr('stroke', C.pass).attr('stroke-width', 2);
+    } else {
+      mg.append('rect').attr('x',10).attr('y',50).attr('width',25).attr('height',30).attr('fill', C.fail).attr('rx',2);
+      mg.append('rect').attr('x',55).attr('y',20).attr('width',25).attr('height',60).attr('fill', C.pass).attr('rx',2);
+    }
+
+    g.on('click', () => {
+      detailG.attr('opacity', 1);
+      detailText.text(`${p.id}: ${p.desc}`);
+    });
+  });
+});
+
+registerAnim('G2-phase-transition', (container) => {
+  const W = 500, H = 320, margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const hMaxVals = [8, 15, 25, 40, 60];
+  const xS = d3.scaleLinear().domain([0.01, 0.3]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([0, 1]).range([ph, 0]);
+
+  g.append('g').attr('transform',`translate(0,${ph})`).call(d3.axisBottom(xS).ticks(6)).selectAll('text').attr('font-size',12);
+  g.append('g').call(d3.axisLeft(yS).ticks(5)).selectAll('text').attr('font-size',12);
+  g.append('text').attr('x',pw/2).attr('y',ph+35).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec).text('η');
+  g.append('text').attr('x',-45).attr('y',ph/2).attr('text-anchor','middle').attr('font-size',13).attr('fill', C.textSec)
+    .attr('transform',`rotate(-90,-45,${ph/2})`).text('訓練損失');
+
+  // For each solution, loss = 0 when η < 2/h, then jumps
+  const etaVals = d3.range(0.01, 0.3, 0.002);
+  function loss(eta) {
+    let l = 0;
+    hMaxVals.forEach(h => {
+      if (eta * h > 2) l += 0.15; // each unstable solution adds loss
+    });
+    return l;
+  }
+
+  const lossData = etaVals.map(e => [e, loss(e)]);
+  const lineGen = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveStepAfter);
+  g.append('path').datum(lossData).attr('d', lineGen)
+    .attr('fill','none').attr('stroke', C.fail).attr('stroke-width', 2.5);
+
+  // Mark critical points
+  hMaxVals.forEach(h => {
+    const etaC = 2/h;
+    if (etaC < 0.3) {
+      g.append('line').attr('x1', xS(etaC)).attr('x2', xS(etaC)).attr('y1', 0).attr('y2', ph)
+        .attr('stroke', C.warn).attr('stroke-dasharray','3,3').attr('stroke-width', 1);
+      g.append('text').attr('x', xS(etaC)).attr('y', -5).attr('text-anchor','middle')
+        .attr('font-size', 9).attr('fill', C.warn).text(`h=${h}`);
+    }
+  });
+
+  // η slider indicator
+  const indicator = g.append('line').attr('y1', 0).attr('y2', ph).attr('stroke', C.info).attr('stroke-width', 2);
+  const lossLabel = g.append('text').attr('font-size', 14).attr('font-weight', 700).attr('fill', C.fail);
+
+  createSlider(container, {
+    label: 'η', min: 0.01, max: 0.3, step: 0.002, default: 0.01,
+    format: v => v.toFixed(3),
+    onChange: v => {
+      indicator.attr('x1', xS(v)).attr('x2', xS(v));
+      const l = loss(v);
+      lossLabel.attr('x', xS(v) + 10).attr('y', yS(l) - 10).text(`loss = ${l.toFixed(2)}`);
+    }
+  });
+});
 
 // ========== SECTION H ==========
 // Task 12
