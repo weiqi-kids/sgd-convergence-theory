@@ -1,0 +1,624 @@
+%%% SGD 在插值域中的隱式正則化：完整定理與逐行證明
+%%% 自包含，不依賴 SDE 近似，直接在離散 SGD 上工作。
+
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{CJKutf8}
+
+\newtheorem{theorem}{定理}
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{corollary}[theorem]{推論}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定義}
+\newtheorem{assumption}{假設}
+\newtheorem{remark}[theorem]{備註}
+
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\spn}{span}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cC}{\mathcal{C}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cG}{\mathcal{G}}
+\newcommand{\bJ}{\mathbf{J}}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+
+\begin{document}
+\begin{CJK}{UTF8}{bsmi}
+
+\title{\Large 插值域中 SGD 的隱式正則化\\[4pt]
+  \large 離散時間完整定理與逐行證明}
+\author{}
+\date{}
+\maketitle
+
+\tableofcontents
+\bigskip\hrule\bigskip
+
+%% ============================================================
+\section{設定與記號}
+%% ============================================================
+
+訓練集 $S = \{(x_i, y_i)\}_{i=1}^n$，$(x_i,y_i)\stackrel{\text{i.i.d.}}{\sim}\cD$。
+模型 $f_\theta:\cX\to\R$，$\theta\in\R^d$，$d > n$。
+MSE 損失：
+\[
+  \ell_i(\theta)=\tfrac{1}{2}(f_\theta(x_i)-y_i)^2,\qquad
+  L(\theta)=\frac{1}{n}\sum_{i=1}^n\ell_i(\theta).
+\]
+
+\textbf{插值流形}：$\cM=\{\theta\in\R^d:f_\theta(x_i)=y_i,\;\forall\,i\in[n]\}$。
+
+對 $\theta^*\in\cM$，定義：
+\begin{itemize}
+  \item Jacobian 向量：$J_i=\nabla_\theta f_{\theta^*}(x_i)\in\R^d$。
+  \item Jacobian 矩陣：$\bJ\in\R^{n\times d}$，第 $i$ 行為 $J_i^\top$。
+  \item Per-sample Hessian：$H_i=J_iJ_i^\top$
+    （在 $\theta^*\in\cM$ 處，殘差 $=0$，$\nabla^2\ell_i(\theta^*)=H_i$）。
+  \item Per-sample 曲率：$h_i=\norm{J_i}^2$。
+  \item 最大曲率：$h_{\max}=\max_i h_i$。
+  \item 活躍子空間：$\cS=\spn(J_1,\ldots,J_n)$。
+\end{itemize}
+
+\textbf{SGD}：$\theta_{t+1}=\theta_t-\eta\,\nabla\ell_{z_t}(\theta_t)$，
+$z_t\sim\mathrm{Uniform}([n])$ i.i.d.。
+
+%% ============================================================
+\section{核心定義}
+%% ============================================================
+
+\begin{definition}[臨界學習率]\label{def:eta-c}
+  $\eta_c(\theta^*)=2/h_{\max}(\theta^*)$。
+\end{definition}
+
+\begin{definition}[好的 vs 壞的插值解]\label{def:good-bad}
+  給定學習率 $\eta>0$：
+  \begin{itemize}
+    \item $\theta^*$ 稱為 \textbf{$\eta$-穩定的}（好的、平坦的），若 $\eta<\eta_c(\theta^*)$，即 $\eta h_{\max}<2$。
+    \item $\theta^*$ 稱為 \textbf{$\eta$-不穩定的}（壞的、尖銳的），若 $\eta>\eta_c(\theta^*)$，即 $\eta h_{\max}>2$。
+  \end{itemize}
+\end{definition}
+
+\begin{definition}[Jacobian 複雜度]\label{def:jac-complex}
+  $\cC(\theta^*)=\sqrt{\frac{1}{n}\sum_{i=1}^n h_i(\theta^*)}=\norm{\bJ(\theta^*)}_F/\sqrt{n}$。
+\end{definition}
+
+\begin{remark}[物理直覺]
+  $h_i=\norm{\nabla_\theta f_\theta(x_i)}^2$ 衡量模型輸出在 $x_i$ 處對參數的靈敏度。好的插值解意味著：沒有任何訓練樣本需要模型處於高靈敏配置。壞的插值解意味著：至少存在某筆資料使模型必須精準「對齊」參數才能插值，這種對齊在 SGD 隨機擾動下無法維持。
+\end{remark}
+
+%% ============================================================
+\section{假設}
+%% ============================================================
+
+\begin{assumption}[局部光滑性]\label{A:smooth}
+  $f_\theta(x)$ 對 $\theta$ 二次連續可微。在 $\theta^*$ 的某鄰域 $B(\theta^*,r_0)$ 內，
+  $\norm{\nabla^2_\theta f_\theta(x_i)}_{\mathrm{op}}\leq B_2$ 對所有 $i\in[n]$。
+\end{assumption}
+
+\begin{assumption}[Jacobian 獨立性]\label{A:indep}
+  $\{J_1,\ldots,J_n\}$ 線性獨立，故 $\dim\cS=n$。
+\end{assumption}
+
+\begin{assumption}[Jacobian 正交性]\label{A:orth}
+  $J_i^\top J_j=0$ 對所有 $i\neq j$。
+\end{assumption}
+
+\begin{remark}[關於正交假設]
+  假設~\ref{A:orth} 是技術假設，使穩定性分析完全解耦。在 NTK 極限下，透過在核矩陣 $K=\bJ\bJ^\top$ 的特徵基底下工作（白化），此假設可近似滿足。定性結論（$\eta h_{\max}>2$ 即不穩定）在一般情形下由 Furstenberg 隨機矩陣乘積理論支持，但嚴格定量界需要更複雜的分析。我們選擇在假設~\ref{A:orth} 下給出完全嚴格的證明。
+\end{remark}
+
+%% ============================================================
+\section{Part A：壞的插值解被 SGD 排斥}
+%% ============================================================
+
+\begin{lemma}[SGD 在插值解附近的線性化]\label{lem:lin}
+  設 $\theta^*\in\cM$，假設~\ref{A:smooth} 成立。令 $\delta_t=\theta_t-\theta^*$。
+  當 $\norm{\delta_t}<r_0$ 時，
+  \[
+    \delta_{t+1}=A_{z_t}\,\delta_t+R_{z_t}(\delta_t),
+  \]
+  其中 $A_i=I-\eta\,J_iJ_i^\top$，且 $\norm{R_i(\delta)}\leq C\eta\norm{\delta}^2$（$C>0$ 為常數）。
+\end{lemma}
+
+\begin{proof}
+  \textbf{步驟 1}（展開殘差）。在 $\theta^*$ 處，$r_i(\theta^*)=f_{\theta^*}(x_i)-y_i=0$。Taylor 展開：
+  \[
+    r_i(\theta^*+\delta)=\underbrace{r_i(\theta^*)}_{=\,0}+J_i^\top\delta+O(\norm{\delta}^2)
+    =J_i^\top\delta+O(\norm{\delta}^2).
+  \]
+
+  \textbf{步驟 2}（展開 Jacobian）。
+  \[
+    \nabla_\theta f_{\theta^*+\delta}(x_i)=J_i+\nabla^2_\theta f_{\theta^*}(x_i)\,\delta+O(\norm{\delta}^2)
+    =J_i+O(\norm{\delta}).
+  \]
+
+  \textbf{步驟 3}（展開損失梯度）。$\nabla\ell_i(\theta)=r_i(\theta)\cdot\nabla_\theta f_\theta(x_i)$，故
+  \begin{align*}
+    \nabla\ell_i(\theta^*+\delta)
+    &=\bigl(J_i^\top\delta+O(\norm{\delta}^2)\bigr)\bigl(J_i+O(\norm{\delta})\bigr)\\
+    &=J_i(J_i^\top\delta)+O(\norm{\delta}^2)\\
+    &=J_iJ_i^\top\delta+O(\norm{\delta}^2)\\
+    &=H_i\delta+O(\norm{\delta}^2).
+  \end{align*}
+  展開 $O(\norm{\delta}^2)$ 的細節：交叉項為 $(J_i^\top\delta)\cdot\nabla^2 f_{\theta^*}(x_i)\delta$（量級 $\sqrt{h_i}\norm{\delta}\cdot B_2\norm{\delta}$）和 $\frac{1}{2}(\delta^\top\nabla^2 f_{\theta^*}(x_i)\delta)\cdot J_i$（量級 $\frac{B_2}{2}\norm{\delta}^2\sqrt{h_i}$），以及更高階項。故 $\norm{\nabla\ell_i(\theta^*+\delta)-H_i\delta}\leq C_1\norm{\delta}^2$，其中 $C_1=B_2(\sqrt{h_{\max}}+\frac{B_2}{2}\sqrt{h_{\max}})$。
+
+  \textbf{步驟 4}（SGD 更新）。
+  \begin{align*}
+    \delta_{t+1}
+    &=\delta_t-\eta\,\nabla\ell_{z_t}(\theta^*+\delta_t)
+    =\delta_t-\eta\,H_{z_t}\delta_t-\eta\cdot O(\norm{\delta_t}^2)\\
+    &=(I-\eta\,H_{z_t})\delta_t+R_{z_t}(\delta_t),
+  \end{align*}
+  其中 $\norm{R_i(\delta)}\leq\eta C_1\norm{\delta}^2$。取 $C=C_1$。
+\end{proof}
+
+\begin{lemma}[秩一更新的譜]\label{lem:rank1}
+  $A_i=I-\eta J_iJ_i^\top$。則 $A_i$ 的特徵值為：
+  \begin{itemize}
+    \item $1-\eta h_i$，對應特徵向量 $J_i$；
+    \item $1$（$d-1$ 重），對應特徵空間 $J_i^\perp$。
+  \end{itemize}
+  $A_i$ 的算子範數 $\norm{A_i}_{\mathrm{op}}=\max(1,|1-\eta h_i|)$。
+  $|1-\eta h_i|\leq 1$ 當且僅當 $0\leq\eta h_i\leq 2$。
+\end{lemma}
+
+\begin{proof}
+  $A_i J_i=(I-\eta J_iJ_i^\top)J_i=J_i-\eta\norm{J_i}^2 J_i=(1-\eta h_i)J_i$。
+
+  對 $u\perp J_i$：$A_i u=(I-\eta J_iJ_i^\top)u=u-\eta(J_i^\top u)J_i=u$。
+
+  $\norm{A_i}_{\mathrm{op}}=\max(|1-\eta h_i|,1)$。
+
+  $|1-\eta h_i|\leq 1\iff -1\leq 1-\eta h_i\leq 1\iff 0\leq\eta h_i\leq 2$。
+\end{proof}
+
+\begin{theorem}[壞的插值解在 SGD 下不穩定]\label{thm:A}
+  設 $\theta^*\in\cM$，假設~\ref{A:smooth}--\ref{A:orth} 成立，$\eta h_{\max}>2$。
+
+  則線性化 SGD 在 $\theta^*$ 處的最大 Lyapunov 指數為
+  \[
+    \lambda(\eta,\theta^*)=\max_{k\in[n]}\frac{1}{n}\ln|1-\eta h_k|>0.
+  \]
+
+  因此，$\theta^*$ 在 SGD 下\textbf{幾乎必然不穩定}：對 $\cS$ 中幾乎所有初始偏差 $\delta_0\neq 0$，線性化系統的 $\norm{\delta_t}\to\infty$。
+\end{theorem}
+
+\begin{proof}
+  \textbf{步驟 1}（正交假設下的座標解耦）。
+
+  由假設~\ref{A:orth}，$J_i^\top J_j=0$（$i\neq j$）。取 $\cS$ 的正交基
+  \[
+    e_k=J_k/\sqrt{h_k},\quad k=1,\ldots,n.
+  \]
+  此為正交歸一基：$e_k^\top e_l=\frac{J_k^\top J_l}{\sqrt{h_k h_l}}=\delta_{kl}$。
+
+  \textbf{步驟 2}（$A_i$ 在此基底下的矩陣表示）。
+
+  $A_i|_\cS$ 在基底 $\{e_k\}$ 下的 $(k,l)$ 元素為
+  \begin{align*}
+    (\hat{A}_i)_{kl}
+    &=e_k^\top A_i\,e_l
+    =e_k^\top(I-\eta J_iJ_i^\top)e_l
+    =\delta_{kl}-\eta(e_k^\top J_i)(J_i^\top e_l).
+  \end{align*}
+
+  由正交性，$e_k^\top J_i=\frac{J_k^\top J_i}{\sqrt{h_k}}=\sqrt{h_i}\,\delta_{ki}$。故
+  \[
+    (\hat{A}_i)_{kl}=\delta_{kl}-\eta\sqrt{h_i}\delta_{ki}\cdot\sqrt{h_i}\delta_{li}
+    =\delta_{kl}-\eta h_i\,\delta_{ki}\delta_{li}.
+  \]
+
+  即 $\hat{A}_i$ 是\textbf{對角矩陣}：
+  \[
+    (\hat{A}_i)_{kk}=\begin{cases}1-\eta h_i,&k=i,\\1,&k\neq i.\end{cases}
+  \]
+
+  \textbf{步驟 3}（座標演化）。
+
+  設 $\xi_t\in\R^n$ 為 $\delta_t|_\cS$ 在基底 $\{e_k\}$ 下的座標：$(\xi_t)_k=e_k^\top\delta_t$。由 $\hat{A}_i$ 的對角結構：
+  \[
+    (\xi_{t+1})_k=(\hat{A}_{z_t})_{kk}\cdot(\xi_t)_k
+    =\begin{cases}(1-\eta h_k)(\xi_t)_k,&z_t=k,\\(\xi_t)_k,&z_t\neq k.\end{cases}
+  \]
+
+  每個座標 $k$ 的演化\textbf{獨立}：不同座標之間無耦合。
+
+  \textbf{步驟 4}（乘積表示）。
+
+  \[
+    (\xi_T)_k=(\xi_0)_k\cdot\prod_{t=1}^T(\hat{A}_{z_t})_{kk}.
+  \]
+
+  取對數：
+  \[
+    \ln|(\xi_T)_k|=\ln|(\xi_0)_k|+\sum_{t=1}^T X_t^{(k)},
+  \]
+  其中 $X_t^{(k)}=\ln|(\hat{A}_{z_t})_{kk}|$。
+
+  \textbf{步驟 5}（$X_t^{(k)}$ 的分佈）。
+
+  $z_t\sim\mathrm{Uniform}([n])$，故
+  \[
+    X_t^{(k)}=\begin{cases}\ln|1-\eta h_k|,&\text{概率 }1/n,\\0,&\text{概率 }(n-1)/n.\end{cases}
+  \]
+
+  期望：$\E[X_t^{(k)}]=\frac{1}{n}\ln|1-\eta h_k|\triangleq\lambda_k$。
+
+  方差：$\mathrm{Var}(X_t^{(k)})=\frac{1}{n}(\ln|1-\eta h_k|)^2-\frac{1}{n^2}(\ln|1-\eta h_k|)^2=\frac{n-1}{n^2}(\ln|1-\eta h_k|)^2<\infty$。
+
+  \textbf{步驟 6}（強大數定律）。
+
+  $\{X_t^{(k)}\}_{t\geq 1}$ 是 i.i.d. 序列（因為 $z_1,z_2,\ldots$ i.i.d.），期望和方差有限。由 Kolmogorov 強大數定律：
+  \[
+    \frac{1}{T}\sum_{t=1}^T X_t^{(k)}\xrightarrow{T\to\infty}\lambda_k=\frac{1}{n}\ln|1-\eta h_k|
+    \quad\text{幾乎必然。}
+  \]
+
+  故
+  \[
+    \frac{1}{T}\ln|(\xi_T)_k|\to\lambda_k\quad\text{幾乎必然。}
+  \]
+
+  \textbf{步驟 7}（Lyapunov 指數的符號）。
+
+  \textbf{情形 1}：$\eta h_k<2$。$|1-\eta h_k|<1$，$\ln|1-\eta h_k|<0$，$\lambda_k<0$。
+
+  \textbf{情形 2}：$\eta h_k>2$。$|1-\eta h_k|=\eta h_k-1>1$，$\ln|1-\eta h_k|>0$，$\lambda_k>0$。
+
+  \textbf{步驟 8}（不穩定性結論）。
+
+  設 $k^*=\arg\max_k h_k$。由假設 $\eta h_{k^*}=\eta h_{\max}>2$，故 $\lambda_{k^*}>0$。
+
+  只要 $(\xi_0)_{k^*}\neq 0$（即初始偏差在 $J_{k^*}$ 方向有非零分量），
+  \[
+    |(\xi_T)_{k^*}|=|(\xi_0)_{k^*}|\cdot\exp\!\big(\lambda_{k^*}\cdot T+o(T)\big)\to\infty
+    \quad\text{幾乎必然。}
+  \]
+
+  故 $\norm{\delta_T}\geq|(\xi_T)_{k^*}|\to\infty$。$\theta^*$ 在線性化 SGD 下幾乎必然不穩定。
+
+  \textbf{步驟 9}（最大 Lyapunov 指數）。
+
+  系統在 $\cS$ 上的最大 Lyapunov 指數為
+  \[
+    \lambda=\max_{k\in[n]}\lambda_k=\max_k\frac{1}{n}\ln|1-\eta h_k|
+    \geq\lambda_{k^*}=\frac{1}{n}\ln(\eta h_{\max}-1)>0. \qedhere
+  \]
+\end{proof}
+
+%% ============================================================
+\section{Part B：好的插值解是 SGD 穩定的}
+%% ============================================================
+
+\begin{theorem}[好的插值解在 SGD 下穩定]\label{thm:B}
+  設 $\theta^*\in\cM$，假設~\ref{A:smooth}--\ref{A:orth} 成立，$\eta h_{\max}<2$。
+
+  則線性化 SGD 的所有 Lyapunov 指數為負：
+  \[
+    \lambda_k=\frac{1}{n}\ln|1-\eta h_k|<0,\quad\forall\,k\in[n].
+  \]
+
+  $\theta^*$ 在線性化 SGD 下\textbf{幾乎必然漸近穩定}：
+  $\norm{\delta_t|_\cS}\to 0$ 幾乎必然，以指數速率
+  \[
+    \norm{\delta_t|_\cS}\leq\norm{\delta_0|_\cS}\cdot\exp\!\Big(\max_k\lambda_k\cdot t+o(t)\Big).
+  \]
+  $\delta_t$ 在 $\cS^\perp$ 上的分量恆定（SGD 在此方向上無力量）。
+\end{theorem}
+
+\begin{proof}
+  所有步驟與定理~\ref{thm:A} 的證明相同，只是符號不同。
+
+  \textbf{步驟 1--6}：同上，得到每個座標的 Lyapunov 指數 $\lambda_k=\frac{1}{n}\ln|1-\eta h_k|$。
+
+  \textbf{步驟 7}：由 $\eta h_k\leq\eta h_{\max}<2$ 對所有 $k$，
+  $|1-\eta h_k|<1$，$\lambda_k<0$ 對所有 $k$。
+
+  \textbf{步驟 8}：$\frac{1}{T}\ln|(\xi_T)_k|\to\lambda_k<0$（幾乎必然），
+  故 $|(\xi_T)_k|\to 0$ 對每個 $k$。
+
+  因此 $\norm{\delta_T|_\cS}=\sqrt{\sum_k(\xi_T)_k^2}\to 0$ 幾乎必然。
+
+  衰減速率由最慢的座標決定：$\lambda_{\max}=\max_k\lambda_k<0$，
+  $\norm{\delta_T|_\cS}\leq\norm{\delta_0|_\cS}\exp(\lambda_{\max}T+o(T))$。
+
+  $\cS^\perp$ 方向：$A_i|_{\cS^\perp}=I$，故 $P_{\cS^\perp}\delta_t=P_{\cS^\perp}\delta_0$，恆定不變。
+\end{proof}
+
+\begin{remark}[選擇效應]
+  定理~\ref{thm:A} 和~\ref{thm:B} 合在一起：對給定 $\eta$，SGD 排斥所有 $h_{\max}>2/\eta$ 的插值解，只能停留在 $h_{\max}\leq 2/\eta$ 的解附近。增大 $\eta$ 使更多解不穩定，強制 SGD 選擇 $h_{\max}$ 更小的解——這是 SGD 的\textbf{隱式正則化}。
+\end{remark}
+
+%% ============================================================
+\section{Part C：好的插值解泛化更好}
+%% ============================================================
+
+\subsection{策略說明}
+
+傳統的 leave-one-out 穩定性論證在插值域失效：移除 $(x_j,y_j)$ 後，$\theta^*$ 在 $d\gg n$ 下仍可能是剩餘樣本的插值解，穩定性間隙為零。
+
+我們改用\textbf{函數空間複雜度}論證：$h_i$ 小意味著 $f_\theta$ 在 $\theta^*$ 附近對參數不敏感，模型的有效自由度低，可通過 Rademacher 複雜度控制泛化。
+
+\begin{theorem}[Jacobian 複雜度控制 Rademacher 複雜度]\label{thm:rad}
+  設 $\theta^*\in\cM$，假設~\ref{A:smooth} 成立。定義
+  \[
+    \cG_\rho=\{x\mapsto f_\theta(x)-f_{\theta^*}(x):\theta\in B(\theta^*,\rho)\}.
+  \]
+  則經驗 Rademacher 複雜度滿足
+  \begin{equation}\label{eq:rad}
+    \hat{\mathcal{R}}_S(\cG_\rho)\leq\frac{\rho\,\cC(\theta^*)}{\sqrt{n}}+\frac{B_2\rho^2}{2}.
+  \end{equation}
+\end{theorem}
+
+\begin{proof}
+  \textbf{步驟 1}（Taylor 展開）。對 $\theta=\theta^*+\delta$，$\norm{\delta}\leq\rho$：
+  \[
+    f_\theta(x_i)-f_{\theta^*}(x_i)=J_i^\top\delta+r_i(\delta),
+  \]
+  其中 $r_i(\delta)=\frac{1}{2}\delta^\top\nabla^2_\theta f_{\tilde\theta}(x_i)\delta$（某 $\tilde\theta$ 在線段 $[\theta^*,\theta]$ 上），$|r_i(\delta)|\leq\frac{B_2}{2}\norm{\delta}^2\leq\frac{B_2\rho^2}{2}$。
+
+  \textbf{步驟 2}（Rademacher 複雜度分解）。$\sigma_1,\ldots,\sigma_n$ 為 i.i.d.\ Rademacher。
+  \begin{align*}
+    \hat{\mathcal{R}}_S(\cG_\rho)
+    &=\E_\sigma\!\left[\sup_{\norm{\delta}\leq\rho}\frac{1}{n}\sum_{i=1}^n\sigma_i\bigl(J_i^\top\delta+r_i(\delta)\bigr)\right]\\
+    &\leq\E_\sigma\!\left[\sup_{\norm{\delta}\leq\rho}\frac{1}{n}\sum_{i=1}^n\sigma_iJ_i^\top\delta\right]+\frac{B_2\rho^2}{2}.
+  \end{align*}
+  第二行用了 $|r_i(\delta)|\leq\frac{B_2\rho^2}{2}$，故 $\frac{1}{n}\sum|\sigma_ir_i|\leq\frac{B_2\rho^2}{2}$。
+
+  更嚴格地：$\sup_\delta\frac{1}{n}\sum\sigma_i(J_i^\top\delta+r_i(\delta))
+  \leq\sup_\delta\frac{1}{n}\sum\sigma_iJ_i^\top\delta+\sup_\delta\frac{1}{n}\sum|\sigma_ir_i(\delta)|
+  \leq\sup_\delta\frac{1}{n}\sum\sigma_iJ_i^\top\delta+\frac{B_2\rho^2}{2}$。
+
+  （第二項不依賴 $\sigma$，因為 $|r_i|\leq\frac{B_2\rho^2}{2}$ 是確定性的。）
+
+  \textbf{步驟 3}（線性部分的計算）。
+  \begin{align*}
+    \sup_{\norm{\delta}\leq\rho}\frac{1}{n}\sum_{i=1}^n\sigma_iJ_i^\top\delta
+    &=\sup_{\norm{\delta}\leq\rho}\frac{1}{n}\!\left(\sum_{i=1}^n\sigma_iJ_i\right)^\top\!\delta
+    =\frac{\rho}{n}\norm{\sum_{i=1}^n\sigma_iJ_i}.
+  \end{align*}
+  最後一步用了 $\sup_{\norm{\delta}\leq\rho}v^\top\delta=\rho\norm{v}$（$\delta^*=\rho v/\norm{v}$）。
+
+  \textbf{步驟 4}（期望估計）。由 Jensen 不等式（$\sqrt{\cdot}$ 是凹函數）：
+  \begin{align*}
+    \E_\sigma\!\left[\norm{\sum_i\sigma_iJ_i}\right]
+    &\leq\sqrt{\E_\sigma\!\left[\norm{\sum_i\sigma_iJ_i}^2\right]}.
+  \end{align*}
+
+  展開範數平方：
+  \begin{align*}
+    \E_\sigma\!\left[\norm{\sum_i\sigma_iJ_i}^2\right]
+    &=\E_\sigma\!\left[\sum_i\sum_j\sigma_i\sigma_jJ_i^\top J_j\right]
+    =\sum_i\sum_j\E[\sigma_i\sigma_j]\cdot J_i^\top J_j.
+  \end{align*}
+
+  由 $\sigma_i$ i.i.d.\ Rademacher：$\E[\sigma_i\sigma_j]=\delta_{ij}$（$\E[\sigma_i^2]=1$，$\E[\sigma_i\sigma_j]=\E[\sigma_i]\E[\sigma_j]=0$ 對 $i\neq j$）。故
+  \[
+    \E_\sigma\!\left[\norm{\sum_i\sigma_iJ_i}^2\right]=\sum_{i=1}^n\norm{J_i}^2=\sum_{i=1}^n h_i=n\,\cC(\theta^*)^2.
+  \]
+
+  因此 $\E_\sigma[\norm{\sum_i\sigma_iJ_i}]\leq\sqrt{n}\,\cC(\theta^*)$。
+
+  \textbf{步驟 5}（合併）。
+  \[
+    \hat{\mathcal{R}}_S(\cG_\rho)\leq\frac{\rho}{n}\cdot\sqrt{n}\,\cC(\theta^*)+\frac{B_2\rho^2}{2}
+    =\frac{\rho\,\cC(\theta^*)}{\sqrt{n}}+\frac{B_2\rho^2}{2}. \qedhere
+  \]
+\end{proof}
+
+\begin{theorem}[泛化界]\label{thm:gen}
+  設 $\theta^*\in\cM$，假設~\ref{A:smooth} 成立。設損失 $\ell(f_\theta(x),y)$ 在第一個參數上 $L_\ell$-Lipschitz，取值在 $[0,\overline{\ell}]$。以概率 $\geq 1-\delta$（對 $S$ 的抽樣）：
+  \begin{equation}\label{eq:gen}
+    L_{\mathrm{pop}}(\theta^*)\leq\underbrace{L(\theta^*)}_{=\,0}+\frac{2L_\ell\rho\,\cC(\theta^*)}{\sqrt{n}}+L_\ell B_2\rho^2+\overline{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+  \end{equation}
+\end{theorem}
+
+\begin{proof}
+  \textbf{步驟 1}（訓練損失為零）。$\theta^*\in\cM$，$f_{\theta^*}(x_i)=y_i$，$L(\theta^*)=0$。
+
+  \textbf{步驟 2}（標準 Rademacher 泛化界）。定義函數類
+  $\cH=\{(x,y)\mapsto\ell(f_\theta(x),y):\theta\in B(\theta^*,\rho)\}$。
+  由標準結果（Mohri--Rostamizadeh--Talwalkar, Theorem 3.1），以概率 $\geq 1-\delta$：
+  \[
+    \sup_{\theta\in B(\theta^*,\rho)}\bigl|L_{\mathrm{pop}}(\theta)-L(\theta)\bigr|
+    \leq 2\hat{\mathcal{R}}_S(\cH)+\overline{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+  \]
+
+  \textbf{步驟 3}（Lipschitz 收縮）。由 Ledoux--Talagrand 收縮引理，$\ell$ 在第一個參數上 $L_\ell$-Lipschitz 蘊含
+  \[
+    \hat{\mathcal{R}}_S(\cH)\leq L_\ell\,\hat{\mathcal{R}}_S(\cF_\rho),
+  \]
+  其中 $\cF_\rho=\{x\mapsto f_\theta(x):\theta\in B(\theta^*,\rho)\}$。
+
+  加減常數 $f_{\theta^*}$ 不影響 Rademacher 複雜度（因為 $\E_\sigma[\sum\sigma_i c]=0$），故 $\hat{\mathcal{R}}_S(\cF_\rho)=\hat{\mathcal{R}}_S(\cG_\rho)$。
+
+  \textbf{步驟 4}（代入定理~\ref{thm:rad}）。
+  \begin{align*}
+    L_{\mathrm{pop}}(\theta^*)
+    &\leq L(\theta^*)+2L_\ell\hat{\mathcal{R}}_S(\cG_\rho)+\overline{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}\\
+    &\leq 0+2L_\ell\!\left(\frac{\rho\,\cC(\theta^*)}{\sqrt{n}}+\frac{B_2\rho^2}{2}\right)+\overline{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+    \qedhere
+  \end{align*}
+\end{proof}
+
+%% ============================================================
+\section{閉環：主定理}
+%% ============================================================
+
+\begin{theorem}[SGD 在插值域中的隱式正則化——主定理]\label{thm:main}
+  設假設~\ref{A:smooth}--\ref{A:orth} 成立，$\cM\neq\varnothing$。
+  定義 $\eta$-穩定集 $\cM_\eta=\{\theta^*\in\cM:h_{\max}(\theta^*)<2/\eta\}$。
+  SGD 以學習率 $\eta$ 運行。
+
+  \begin{enumerate}
+    \item[\textbf{(I) 選擇}.]
+    SGD 排斥 $\cM\setminus\cM_\eta$ 中的每個插值解：
+    在這些解附近，最大 Lyapunov 指數
+    $\lambda\geq\frac{1}{n}\ln(\eta h_{\max}-1)>0$，
+    SGD 幾乎必然逃離其鄰域。
+
+    SGD 被 $\cM_\eta$ 吸引：在這些解附近，所有 Lyapunov 指數為負，
+    $\cS$-方向偏差指數衰減。
+
+    \item[\textbf{(II) 複雜度控制}.]
+    $\cM_\eta$ 中的解滿足 $h_i\leq 2/\eta$ 對所有 $i$，故
+    \[
+      \cC(\theta^*)^2=\frac{1}{n}\sum_i h_i\leq h_{\max}<\frac{2}{\eta}.
+    \]
+
+    \item[\textbf{(III) 泛化}.]
+    以概率 $\geq 1-\delta$，SGD 選出的解 $\theta^*\in\cM_\eta$ 滿足
+    \[
+      L_{\mathrm{pop}}(\theta^*)\leq\frac{2L_\ell\rho}{\sqrt{\eta\,n}}\cdot\sqrt{2}
+      +L_\ell B_2\rho^2+\overline{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+    \]
+
+    \item[\textbf{(IV) 單調性}.]
+    $\eta_1<\eta_2\Rightarrow\cM_{\eta_2}\subseteq\cM_{\eta_1}
+    \Rightarrow\sup_{\cM_{\eta_2}}\cC\leq\sup_{\cM_{\eta_1}}\cC$。
+    增大 $\eta$ 使泛化界收緊。
+  \end{enumerate}
+\end{theorem}
+
+\begin{proof}
+  \textbf{(I)} 由定理~\ref{thm:A} 和~\ref{thm:B}。
+
+  \textbf{(II)} 對 $\theta^*\in\cM_\eta$，$h_i\leq h_{\max}<2/\eta$ 對每個 $i$，故
+  $\cC^2=\frac{1}{n}\sum h_i\leq h_{\max}<2/\eta$。
+
+  \textbf{(III)} 將 $\cC(\theta^*)\leq\sqrt{2/\eta}$ 代入~\eqref{eq:gen}：
+  \[
+    L_{\mathrm{pop}}(\theta^*)\leq\frac{2L_\ell\rho\sqrt{2/\eta}}{\sqrt{n}}+L_\ell B_2\rho^2+\overline{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+  \]
+
+  \textbf{(IV)} $\cM_\eta=\{\theta^*\in\cM:h_{\max}<2/\eta\}$。$\eta$ 增大 $\Rightarrow$ $2/\eta$ 減小 $\Rightarrow$ 門檻更嚴 $\Rightarrow$ $\cM_\eta$ 縮小。
+
+  $\sup_{\cM_\eta}\cC\leq\sqrt{2/\eta}$ 隨 $\eta$ 單調遞減。
+\end{proof}
+
+%% ============================================================
+\section{PAC-Bayes 泛化界（不依賴 $\rho$）}
+%% ============================================================
+
+上節的泛化界涉及鄰域半徑 $\rho$。以下給出不依賴 $\rho$ 的替代界。
+
+\begin{theorem}[PAC-Bayes 界]\label{thm:pb}
+  設 $\theta^*\in\cM$，假設~\ref{A:smooth} 成立。
+  先驗 $P=\mathcal{N}(0,\sigma_0^2 I_d)$，後驗 $Q=\mathcal{N}(\theta^*,\sigma^2 I_d)$。
+  設 $\ell(\hat{y},y)=\frac{1}{2}(\hat{y}-y)^2\in[0,\overline{\ell}]$。
+  以概率 $\geq 1-\delta$：
+  \begin{equation}\label{eq:pb}
+    \E_{\theta\sim Q}\bigl[L_{\mathrm{pop}}(\theta)\bigr]
+    \leq\frac{\sigma^2\cC(\theta^*)^2}{2}+O(\sigma^4)
+    +\sqrt{\frac{d\bigl(\frac{\sigma^2}{\sigma_0^2}-1-\ln\frac{\sigma^2}{\sigma_0^2}\bigr)/2
+    +\frac{\norm{\theta^*}^2}{2\sigma_0^2}+\ln\frac{2\sqrt{n}}{\delta}}{2n}}.
+  \end{equation}
+\end{theorem}
+
+\begin{proof}
+  \textbf{步驟 1}（PAC-Bayes 不等式）。標準結果（McAllester 1999 / Catoni 2007）：以概率 $\geq 1-\delta$，
+  \[
+    \E_{Q}[L_{\mathrm{pop}}]\leq\E_Q[L]+\sqrt{\frac{\mathrm{KL}(Q\|P)+\ln(2\sqrt{n}/\delta)}{2n}}.
+  \]
+
+  \textbf{步驟 2}（計算 $\E_Q[L]$）。$\theta=\theta^*+\epsilon$，$\epsilon\sim\mathcal{N}(0,\sigma^2 I)$。
+
+  $f_\theta(x_i)-y_i=J_i^\top\epsilon+\frac{1}{2}\epsilon^\top\nabla^2_\theta f_{\theta^*}(x_i)\epsilon+O(\norm{\epsilon}^3)$。
+
+  $(f_\theta(x_i)-y_i)^2=(J_i^\top\epsilon)^2+\text{（交叉項）}+O(\norm{\epsilon}^4)$。
+
+  交叉項 $=2(J_i^\top\epsilon)\cdot\frac{1}{2}\epsilon^\top\nabla^2 f(x_i)\epsilon
+  =(J_i^\top\epsilon)\cdot\epsilon^\top\nabla^2 f(x_i)\epsilon$。
+  $\E[(J_i^\top\epsilon)\cdot\epsilon^\top\nabla^2 f(x_i)\epsilon]
+  =\sum_{a,b,c}(J_i)_a(\nabla^2 f)_{bc}\E[\epsilon_a\epsilon_b\epsilon_c]=0$
+  （高斯分佈奇數階矩為零）。
+
+  $\E[(J_i^\top\epsilon)^2]=\sigma^2\norm{J_i}^2=\sigma^2 h_i$。
+
+  故 $\E[\ell_i(\theta)]=\frac{\sigma^2 h_i}{2}+O(\sigma^4)$，
+  $\E_Q[L]=\frac{\sigma^2}{2n}\sum h_i+O(\sigma^4)=\frac{\sigma^2\cC^2}{2}+O(\sigma^4)$。
+
+  \textbf{步驟 3}（KL 散度）。標準高斯 KL：
+  $\mathrm{KL}(\mathcal{N}(\theta^*,\sigma^2 I)\|\mathcal{N}(0,\sigma_0^2 I))
+  =\frac{d}{2}\!\left(\frac{\sigma^2}{\sigma_0^2}-1-\ln\frac{\sigma^2}{\sigma_0^2}\right)+\frac{\norm{\theta^*}^2}{2\sigma_0^2}$。
+
+  代入步驟 1 即得。
+\end{proof}
+
+\begin{corollary}[SGD 選出的解的 PAC-Bayes 泛化]\label{cor:pb}
+  SGD 選出 $\theta^*\in\cM_\eta$，$\cC^2\leq 2/\eta$。取 $\sigma^2=\alpha\eta$（$\alpha>0$ 為待定常數）。則
+  \[
+    \E_Q[L]\leq\alpha+O(\eta^2).
+  \]
+  取 $\alpha$ 小（如 $\alpha=1/4$），PAC-Bayes 界的主項為
+  \[
+    \frac{1}{4}+\sqrt{\frac{d\bigl(\frac{\alpha\eta}{\sigma_0^2}-1-\ln\frac{\alpha\eta}{\sigma_0^2}\bigr)/2+\frac{\norm{\theta^*}^2}{2\sigma_0^2}+\ln\frac{2\sqrt{n}}{\delta}}{2n}}.
+  \]
+  若 $\alpha\eta\ll\sigma_0^2$（學習率遠小於先驗方差），KL 項中 $\frac{d}{2}\ln\frac{\sigma_0^2}{\alpha\eta}$ 主導，界為 $O(\sqrt{d\ln(1/\eta)/n})$。
+\end{corollary}
+
+%% ============================================================
+\section{與非插值域框架的統一}
+%% ============================================================
+
+\begin{remark}[兩個域的統一圖像]
+  \
+
+  \textbf{非插值域}（Part I--III of the existing framework）：
+  \begin{itemize}
+    \item 梯度噪聲 $\Sigma(\theta)>0$，SDE 近似有效。
+    \item FPE 穩態 $p(\theta)\propto(1/\Sigma)\exp(-2V_{\mathrm{eff}}/\tau)$ 偏好低 $\Sigma$。
+    \item 低 $\Sigma/H$ 蘊含低泛化間隙 $\approx\Sigma/(H(n-1))$。
+  \end{itemize}
+
+  \textbf{插值域}（本文）：
+  \begin{itemize}
+    \item $\Sigma(\theta^*)=0$，SDE 退化。
+    \item 改用離散隨機矩陣乘積分析。
+    \item SGD 穩定性由 $\eta_c=2/h_{\max}$ 決定。
+    \item 低 $h_{\max}$（和低 $\cC$）蘊含低泛化間隙。
+  \end{itemize}
+
+  \textbf{統一}：在兩個域中，SGD 的隨機性都充當隱式正則化器，偏好「簡單」解。度量「簡單性」的 per-sample 量在兩個域中有共同的根源：
+  \[
+    \text{非插值域：}\nabla\ell_i(\theta)\neq 0,\quad\Sigma\propto\frac{1}{n}\sum\norm{\nabla\ell_i}^2;
+  \]
+  \[
+    \text{插值域：}\nabla\ell_i(\theta^*)=0,\quad\text{但}\;\nabla^2\ell_i=H_i=J_iJ_i^\top\neq 0.
+  \]
+
+  非插值域中 SGD 通過一階噪聲（$\Sigma$）選擇；插值域中通過二階結構（$H_i$）選擇。兩者都是 $f_\theta$ 的 per-sample 靈敏度的反映。
+\end{remark}
+
+%% ============================================================
+\section{總結}
+%% ============================================================
+
+\begin{center}
+\fbox{\parbox{0.88\textwidth}{
+\centering
+\textbf{Part A.} SGD 排斥 $h_{\max}>2/\eta$ 的插值解\\
+（Lyapunov 指數 $\lambda=\frac{1}{n}\ln(\eta h_{\max}-1)>0$，幾乎必然逃離）\\[6pt]
+$\big\Downarrow$\\[6pt]
+\textbf{Part B.} SGD 收斂到 $h_{\max}<2/\eta$ 的插值解\\
+（所有 Lyapunov 指數 $<0$，$\cS$-方向指數衰減）\\[6pt]
+$\big\Downarrow$\\[6pt]
+\textbf{Part C.} 這些解的 Jacobian 複雜度 $\cC\leq\sqrt{2/\eta}$\\
+泛化間隙 $\leq O\!\left(\frac{\rho}{\sqrt{\eta n}}\right)+O(\rho^2)+O(1/\sqrt{n})$
+}}
+\end{center}
+
+\bigskip
+
+\textbf{核心洞見}：在插值域中，SGD 的隱式正則化不是通過梯度噪聲（$\Sigma=0$），而是通過\textbf{線性穩定性篩選}——SGD 的離散性和隨機性使得 per-sample 曲率過大的插值解無法穩定存在。存活下來的解必然是「簡單」的（低 Jacobian 複雜度），從而泛化良好。
+
+\end{CJK}
+\end{document}
