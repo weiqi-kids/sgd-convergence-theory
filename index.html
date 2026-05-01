@@ -1445,7 +1445,7 @@ registerAnim('C1-3-fpe', (container) => {
 
 // ========== SECTION C2 ==========
 registerAnim('C2-1-eta-screening', (container) => {
-  const W = 700, H = 320, margin = { top: 20, right: 20, bottom: 50, left: 60 };
+  const W = 700, H = 360, margin = { top: 30, right: 30, bottom: 55, left: 65 };
   const svg = createSVG(container, W, H);
   const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
@@ -1931,15 +1931,15 @@ registerAnim('D3-2-selectivity', (container) => {
 
   // Visual scale bar
   const barG = g.append('g').attr('transform', 'translate(50, 30)');
-  barG.append('rect').attr('width', 300).attr('height', 16).attr('rx', 8)
+  barG.append('rect').attr('width', 300).attr('height', 14).attr('rx', 7)
     .attr('fill', C.border);
-  const barFill = barG.append('rect').attr('height', 16).attr('rx', 8)
+  const barFill = barG.append('rect').attr('height', 14).attr('rx', 7)
     .attr('fill', C.pass);
-  barG.append('text').attr('x', 0).attr('y', 38).attr('font-size', 11).attr('fill', C.pass).text('偏好 A');
-  barG.append('text').attr('x', 300).attr('y', 38).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', C.fail).text('偏好 B');
-  barG.append('line').attr('x1', 150).attr('x2', 150).attr('y1', -3).attr('y2', 22)
-    .attr('stroke', C.muted).attr('stroke-dasharray', '3,3').attr('stroke-width', 1);
-  barG.append('text').attr('x', 150).attr('y', 38).attr('text-anchor', 'middle')
+  barG.append('text').attr('x', 0).attr('y', -5).attr('font-size', 11).attr('fill', C.pass).text('← 偏好 A');
+  barG.append('text').attr('x', 300).attr('y', -5).attr('text-anchor', 'end').attr('font-size', 11).attr('fill', C.fail).text('偏好 B →');
+  barG.append('line').attr('x1', 150).attr('x2', 150).attr('y1', -2).attr('y2', 18)
+    .attr('stroke', C.text).attr('stroke-width', 1.5);
+  barG.append('text').attr('x', 150).attr('y', 30).attr('text-anchor', 'middle')
     .attr('font-size', 10).attr('fill', C.muted).text('1.0（無偏好）');
 
   const ratioText = g.append('text').attr('x', 200).attr('y', 90).attr('text-anchor', 'middle')
@@ -2821,122 +2821,130 @@ registerAnim('G2-phase-transition', (container) => {
 
 // ========== SECTION H ==========
 registerAnim('H1-research-map', (container) => {
-  const W = 500, H = 360;
+  const W = 600, H = 370;
   const svg = createSVG(container, W, H);
 
+  // Spread out nodes with more space
   const nodes = [
-    { id: 'T1', label: '定理 I', solved: true, x: 80, y: 80 },
-    { id: 'T2', label: '定理 II', solved: true, x: 80, y: 200 },
-    { id: 'U1', label: '多維 V_eff', solved: false, x: 250, y: 50 },
-    { id: 'U2', label: 'Jacobian\n正交假設', solved: false, x: 250, y: 140 },
-    { id: 'U3', label: '全局軌跡', solved: false, x: 400, y: 80 },
-    { id: 'U4', label: 'F4 邊界\n精確化', solved: false, x: 400, y: 200 },
-    { id: 'U5', label: '離散-連續\n統一', solved: false, x: 320, y: 280 },
+    { id: 'T1', label: '定理 I',       solved: true,  x: 75,  y: 90 },
+    { id: 'T2', label: '定理 II',      solved: true,  x: 75,  y: 230 },
+    { id: 'U1', label: '多維 V_eff',   solved: false, x: 250, y: 55 },
+    { id: 'U2', label: 'Jacobian 正交', solved: false, x: 250, y: 175 },
+    { id: 'U3', label: '全局軌跡',     solved: false, x: 450, y: 55 },
+    { id: 'U4', label: 'F4 邊界精確化', solved: false, x: 450, y: 175 },
+    { id: 'U5', label: '離散-連續統一', solved: false, x: 350, y: 300 },
   ];
   const edges = [
     ['T1', 'U1'], ['T1', 'U3'], ['T2', 'U2'], ['T2', 'U3'],
     ['T1', 'U5'], ['T2', 'U5'], ['U1', 'U4'],
   ];
 
-  // Draw edges
+  // Draw edges first (behind nodes)
   edges.forEach(([from, to]) => {
     const f = nodes.find(n => n.id === from), t = nodes.find(n => n.id === to);
     svg.append('line').attr('x1', f.x).attr('y1', f.y).attr('x2', t.x).attr('y2', t.y)
-      .attr('stroke', C.muted).attr('stroke-width', 1.5).attr('stroke-dasharray','4,3');
+      .attr('stroke', C.border).attr('stroke-width', 1).attr('stroke-dasharray','6,4');
   });
 
-  // Tooltip
-  const tooltip = svg.append('g').attr('opacity', 0);
-  tooltip.append('rect').attr('width', 200).attr('height', 50).attr('fill', C.surface)
-    .attr('stroke', C.border).attr('rx', 4);
-  const ttText = tooltip.append('text').attr('x', 10).attr('y', 20).attr('font-size', 11);
+  // Tooltip as DOM element for better positioning
+  const ttDiv = document.createElement('div');
+  ttDiv.style.cssText = 'position:absolute;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:4px;font-size:13px;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:10;max-width:250px;';
+  container.querySelector('.d3-canvas').style.position = 'relative';
+  container.querySelector('.d3-canvas').appendChild(ttDiv);
 
   const descs = {
-    T1: '1D SDE 穩態分佈（已完成）', T2: '離散 Lyapunov 分析（已完成）',
-    U1: '多維 detailed balance 需 Freidlin-Wentzell 準勢', U2: '去掉需非交換隨機矩陣乘積理論',
-    U3: '從隨機初始化到好解盆地的全局分析', U4: 'Corr(Σ, Gap) > 0 何時成立',
-    U5: '兩個域使用完全不同的數學工具',
+    T1: '§3 — 1D SDE 穩態分佈（已完成）',
+    T2: '§4 — 離散 Lyapunov 分析（已完成）',
+    U1: '§10.1 — 多維 detailed balance 需 Freidlin-Wentzell 準勢（NP-hard）',
+    U2: '§10.2 — 移除正交假設需非交換隨機矩陣乘積理論',
+    U3: '§10.3 — 從隨機初始化到好解盆地的全局路徑分析',
+    U4: '§10.4 — Corr(Σ, Gap) > 0 何時成立取決於數據與架構',
+    U5: '§10.5 — 連續 SDE 與離散 Lyapunov 在 Σ→0 處如何銜接',
   };
 
   nodes.forEach(node => {
     const g = svg.append('g').attr('transform', `translate(${node.x}, ${node.y})`).style('cursor','pointer');
-    const r = 30;
-    g.append('rect').attr('x', -r).attr('y', -20).attr('width', r*2).attr('height', 40).attr('rx', 8)
-      .attr('fill', node.solved ? C.pass : 'none')
-      .attr('fill-opacity', node.solved ? 0.15 : 0)
+    // Wider boxes for longer labels
+    const boxW = node.label.length * 8 + 20, boxH = 32;
+    g.append('rect').attr('x', -boxW/2).attr('y', -boxH/2).attr('width', boxW).attr('height', boxH).attr('rx', 8)
+      .attr('fill', node.solved ? C.pass : C.surface)
+      .attr('fill-opacity', node.solved ? 0.15 : 1)
       .attr('stroke', node.solved ? C.pass : C.high)
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', node.solved ? 'none' : '6,4');
 
-    // Multi-line label
-    const lines = node.label.split('\n');
-    lines.forEach((line, i) => {
-      g.append('text').attr('y', -5 + i * 14 - (lines.length-1)*7)
-        .attr('text-anchor','middle').attr('font-size', 11).attr('font-weight', 600)
-        .attr('fill', node.solved ? C.pass : C.high).text(line);
-    });
+    g.append('text').attr('y', 5)
+      .attr('text-anchor','middle').attr('font-size', 12).attr('font-weight', 600)
+      .attr('fill', node.solved ? C.pass : C.high).text(node.label);
 
-    g.on('mouseenter', (event) => {
-      tooltip.attr('opacity', 1).attr('transform', `translate(${node.x + 40}, ${node.y - 30})`);
-      ttText.text(descs[node.id]);
-    }).on('mouseleave', () => tooltip.attr('opacity', 0));
+    g.on('mouseenter', () => {
+      ttDiv.textContent = descs[node.id];
+      ttDiv.style.opacity = '1';
+      // Position relative to SVG container
+      const svgRect = container.querySelector('svg').getBoundingClientRect();
+      const containerRect = container.querySelector('.d3-canvas').getBoundingClientRect();
+      const scale = containerRect.width / W;
+      ttDiv.style.left = (node.x * scale + 30) + 'px';
+      ttDiv.style.top = (node.y * scale - 20) + 'px';
+    }).on('mouseleave', () => { ttDiv.style.opacity = '0'; });
   });
 });
 
 registerAnim('H2-discrete-continuous', (container) => {
-  const W = 500, H = 360;
+  const W = 640, H = 360;
   const svg = createSVG(container, W, H);
-  const halfW = 210;
+  const panelW = 250, gap = 40, leftX = 30;
+  const rightX = leftX + panelW + gap;
 
   // Left: Continuous SDE world
-  const gL = svg.append('g').attr('transform', 'translate(20, 30)');
-  gL.append('text').attr('x', halfW/2).attr('y', 0).attr('text-anchor','middle')
-    .attr('font-size', 15).attr('font-weight', 700).attr('fill', C.info).text('連續 SDE 世界');
-  gL.append('text').attr('x', halfW/2).attr('y', 20).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('fill', C.textSec).text('定理 I：Σ > 0');
+  const gL = svg.append('g').attr('transform', `translate(${leftX}, 30)`);
+  gL.append('text').attr('x', panelW/2).attr('y', 0).attr('text-anchor','middle')
+    .attr('font-size', 14).attr('font-weight', 700).attr('fill', C.info).text('連續 SDE 世界');
+  gL.append('text').attr('x', panelW/2).attr('y', 18).attr('text-anchor','middle')
+    .attr('font-size', 11).attr('fill', C.textSec).text('§3 定理 I：Σ > 0');
 
   // Mini V_eff landscape
-  const xS = d3.scaleLinear().domain([-3, 3]).range([0, halfW]);
-  const yS = d3.scaleLinear().domain([0, 6]).range([200, 40]);
+  const xS = d3.scaleLinear().domain([-3, 3]).range([0, panelW]);
+  const yS = d3.scaleLinear().domain([0, 6]).range([190, 40]);
   const tVals = d3.range(-3, 3.01, 0.1);
   const veffLine = d3.line().x(d => d[0]).y(d => d[1]).curve(d3.curveBasis);
   const vData = tVals.map(t => [xS(t), yS(0.25*t**4 - 2*t**2 + 4)]);
   gL.append('path').datum(vData).attr('d', veffLine).attr('fill','none').attr('stroke', C.info).attr('stroke-width', 2);
-  gL.append('text').attr('x', halfW/2).attr('y', 220).attr('text-anchor','middle')
+  gL.append('text').attr('x', panelW/2).attr('y', 210).attr('text-anchor','middle')
     .attr('font-size', 11).attr('fill', C.muted).text('V_eff 景觀清晰');
 
   // Right: Discrete Lyapunov world
-  const gR = svg.append('g').attr('transform', `translate(${20 + halfW + 50}, 30)`);
-  gR.append('text').attr('x', halfW/2).attr('y', 0).attr('text-anchor','middle')
-    .attr('font-size', 15).attr('font-weight', 700).attr('fill', C.pass).text('離散 Lyapunov 世界');
-  gR.append('text').attr('x', halfW/2).attr('y', 20).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('fill', C.textSec).text('定理 II：Σ → 0');
+  const gR = svg.append('g').attr('transform', `translate(${rightX}, 30)`);
+  gR.append('text').attr('x', panelW/2).attr('y', 0).attr('text-anchor','middle')
+    .attr('font-size', 14).attr('font-weight', 700).attr('fill', C.pass).text('離散 Lyapunov 世界');
+  gR.append('text').attr('x', panelW/2).attr('y', 18).attr('text-anchor','middle')
+    .attr('font-size', 11).attr('fill', C.textSec).text('§4 定理 II：Σ → 0');
 
-  // Lyapunov bars
+  // Lyapunov bars - constrained to panel
   const hVals = [8, 15, 25, 40, 60];
-  const barXS = d3.scaleBand().domain(d3.range(5)).range([10, halfW-10]).padding(0.3);
+  const barXS = d3.scaleBand().domain(d3.range(5)).range([15, panelW - 15]).padding(0.3);
   hVals.forEach((h, i) => {
     const eta = 0.05;
     const lam = (1/5)*Math.log(Math.abs(1-eta*h));
-    const barH = Math.abs(lam) * 600;
+    const barH = Math.min(Math.abs(lam) * 400, 100); // cap bar height
     const stable = lam < 0;
-    gR.append('rect').attr('x', barXS(i)).attr('y', 130 - (stable ? barH : 0)).attr('width', barXS.bandwidth())
+    gR.append('rect').attr('x', barXS(i)).attr('y', 120 - (stable ? barH : 0)).attr('width', barXS.bandwidth())
       .attr('height', barH).attr('fill', stable ? C.pass : C.fail).attr('rx', 2);
-    gR.append('text').attr('x', barXS(i) + barXS.bandwidth()/2).attr('y', 155)
+    gR.append('text').attr('x', barXS(i) + barXS.bandwidth()/2).attr('y', 140)
       .attr('text-anchor','middle').attr('font-size', 9).attr('fill', C.muted).text(`h=${h}`);
   });
-  gR.append('text').attr('x', halfW/2).attr('y', 220).attr('text-anchor','middle')
+  gR.append('text').attr('x', panelW/2).attr('y', 210).attr('text-anchor','middle')
     .attr('font-size', 11).attr('fill', C.muted).text('Lyapunov 穩定性分析');
 
   // Center crack/gap
-  const crackX = 20 + halfW + 15;
-  svg.append('line').attr('x1', crackX).attr('y1', 40).attr('x2', crackX).attr('y2', 280)
+  const crackX = leftX + panelW + gap/2;
+  svg.append('line').attr('x1', crackX).attr('y1', 40).attr('x2', crackX).attr('y2', 270)
     .attr('stroke', C.fail).attr('stroke-width', 3).attr('stroke-dasharray','8,4');
-  svg.append('text').attr('x', crackX).attr('y', 300).attr('text-anchor','middle')
-    .attr('font-size', 12).attr('font-weight', 700).attr('fill', C.fail).text('Σ → 0 斷裂');
+  svg.append('text').attr('x', crackX).attr('y', 290).attr('text-anchor','middle')
+    .attr('font-size', 13).attr('font-weight', 700).attr('fill', C.fail).text('Σ → 0 斷裂');
 
   // Bottom label
-  svg.append('text').attr('x', W/2).attr('y', 340).attr('text-anchor','middle')
+  svg.append('text').attr('x', W/2).attr('y', 330).attr('text-anchor','middle')
     .attr('font-size', 12).attr('fill', C.high).text('統一需要處理此極限——第五道開放關卡');
 });
 
