@@ -203,16 +203,16 @@ footer a:hover { text-decoration: underline; }
   <input type="checkbox" id="nav-toggle" class="hamburger-check">
   <label for="nav-toggle" class="hamburger">☰</label>
   <div class="navbar-links">
-    <a href="#prologue">前言</a>
-    <a href="#model">模型</a>
-    <a href="#theorem1">定理 I</a>
-    <a href="#theorem2">定理 II</a>
-    <a href="#counterexamples">反例</a>
-    <a href="#concepts">概念</a>
-    <a href="#noise-roles">噪聲</a>
-    <a href="#predictions">預測</a>
-    <a href="#conclusion">結語</a>
-    <a href="#open">開放</a>
+    <a href="#prologue">§1 前言</a>
+    <a href="#model">§2 模型</a>
+    <a href="#theorem1">§3 定理 I</a>
+    <a href="#theorem2">§4 定理 II</a>
+    <a href="#counterexamples">§5 反例</a>
+    <a href="#concepts">§6 概念</a>
+    <a href="#noise-roles">§7 噪聲</a>
+    <a href="#predictions">§8 預測</a>
+    <a href="#conclusion">§9 結語</a>
+    <a href="#open">§10 開放</a>
   </div>
 </nav>
 <div class="progress-bar" id="progress-bar"></div>
@@ -231,7 +231,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- PROLOGUE: 前言 -->
 <section id="prologue">
-  <h2>前言：從 SGD 到「好解」</h2>
+  <h2>§1 前言：從 SGD 到「好解」</h2>
 
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">什麼是 SGD？</h3>
   <p class="intro">機器學習的核心任務是找到一組參數，讓模型的預測盡可能準確。為此，我們需要最小化一個「損失函數」——它衡量模型犯了多少錯。</p>
@@ -256,20 +256,21 @@ footer a:hover { text-decoration: underline; }
   <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">閱讀地圖</h3>
   <p>本文的結構如下：</p>
   <ol style="font-size:var(--text-sm);line-height:1.8;padding-left:1.5rem">
-    <li><strong>形式模型</strong>——建立共同語言：SGD 的數學定義、什麼叫「好解」</li>
-    <li><strong>定理 I（非插值域）</strong>——當訓練損失不為零時，SGD 的噪聲如何偏好泛化好的解</li>
-    <li><strong>定理 II（插值域）</strong>——當訓練損失為零時，SGD 的離散本性如何篩選簡單的解</li>
-    <li><strong>四類反例</strong>——四道關卡各自被違反時，SGD 如何失敗</li>
-    <li><strong>概念問答</strong>——澄清五個常見困惑（平坦性 vs 簡單性、最小範數、detailed balance 等）</li>
-    <li><strong>噪聲的四重角色</strong>——統整噪聲在不同機制域中的作用</li>
-    <li><strong>可驗證預測</strong>——五個可被實驗推翻的具體預測</li>
-    <li><strong>未解決的關口</strong>——五道尚待突破的數學障礙</li>
+    <li><strong>§2 形式模型</strong>——建立共同語言：SGD 的數學定義、什麼叫「好解」</li>
+    <li><strong>§3 定理 I（非插值域）</strong>——當訓練損失不為零時，SGD 的噪聲如何偏好泛化好的解</li>
+    <li><strong>§4 定理 II（插值域）</strong>——當訓練損失為零時，SGD 的離散本性如何篩選簡單的解</li>
+    <li><strong>§5 四類反例</strong>——四道關卡各自被違反時，SGD 如何失敗</li>
+    <li><strong>§6 概念問答</strong>——澄清五個常見困惑（平坦性 vs 簡單性、最小範數、detailed balance 等）</li>
+    <li><strong>§7 噪聲的四重角色</strong>——統整噪聲在不同機制域中的作用</li>
+    <li><strong>§8 可驗證預測</strong>——五個可被實驗推翻的具體預測</li>
+    <li><strong>§9 結語</strong>——回歸命題，總結本文解決了什麼</li>
+    <li><strong>§10 未解決的關口</strong>——五道尚待突破的數學障礙</li>
   </ol>
 </section>
 
 <!-- SECTION B: 形式模型 -->
 <section id="model">
-  <h2>B. 形式模型與符號</h2>
+  <h2>§2 形式模型與符號</h2>
   <p class="intro">在開始之前，先建立共同語言。SGD 就是每次隨機拿一筆資料來更新參數，我們關心的是：它最後停在哪裡？那個位置好不好？</p>
   <div class="animation-grid">
     <div class="animation-container h-360" id="anim-B1-sgd-iter">
@@ -321,7 +322,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION C1: 定理 I -->
 <section id="theorem1">
-  <h2>C1. 定理 I：非插值域閉環</h2>
+  <h2>§3 定理 I：非插值域閉環</h2>
   <p class="intro">當模型還沒有完美擬合所有資料時，SGD 的隨機噪聲就像溫度——它讓參數在不同的盆地之間流動，最終更常停留在「每筆資料梯度都很小」的安靜盆地裡。而安靜的盆地，恰好是泛化更好的地方（在四道關卡都通過的前提下）。</p>
   <div class="animation-grid single">
     <div class="animation-container h-360" id="anim-C1-1-veff">
@@ -391,7 +392,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION C2: 定理 II -->
 <section id="theorem2">
-  <h2>C2. 定理 II：插值域閉環</h2>
+  <h2>§4 定理 II：插值域閉環</h2>
   <p class="intro">當模型已經完美擬合所有資料時，連續的 SDE 近似失效——因為噪聲是零。但 SGD 的離散本性此時反而成為篩選器：它用學習率 η 當作門檻，把太敏感的解震走，只留下簡單的解。</p>
   <div class="animation-grid single">
     <div class="animation-container h-360" id="anim-C2-1-eta-screening">
@@ -446,10 +447,10 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION D: 四類反例 -->
 <section id="counterexamples">
-  <h2>D. 四類反例</h2>
-  <p class="intro">前面說了 SGD 什麼時候成功。現在反過來問：什麼時候會失敗？恰好有四種方式讓 SGD 找到壞解，每一種對應一個必要條件被違反。以下 F1-F4 是四類反例的代號，對應 Hero 中四道關卡被違反的情況。</p>
+  <h2>§5 四類反例</h2>
+  <p class="intro">前面說了 SGD 什麼時候成功。現在反過來問：什麼時候會失敗？恰好有四種方式讓 SGD 找到壞解，每一種對應 §1 中四道關卡的一道被違反。</p>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">F1：η 太小（動力學陷阱）</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§5.1 反例一：η 太小（動力學陷阱）</h3>
   <p class="intro">學習率太小，SGD 像一個只敢小碎步走的人，永遠翻不過兩個盆地之間的山丘。</p>
   <div class="animation-grid">
     <div class="animation-container h-360" id="anim-D1-1-kramers">
@@ -464,7 +465,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">F2：η 太大（發散/混沌）</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§5.2 反例二：η 太大（發散/混沌）</h3>
   <p class="intro">學習率太大，SGD 每一步跨太遠，不但找不到好解，連停都停不下來。</p>
   <div class="animation-grid">
     <div class="animation-container h-360" id="anim-D2-1-diverge">
@@ -479,7 +480,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">F3：無差異化（選擇力退化）</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§5.3 反例三：無差異化（選擇力退化）</h3>
   <p class="intro">如果好解和壞解在 SGD 眼中長得一模一樣，SGD 就像蒙眼選擇，有一半機率停在壞解。</p>
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-D3-1-equal-wells">
@@ -494,7 +495,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </div>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">F4：噪聲-泛化反轉（最深刻）</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§5.4 反例四：噪聲-泛化反轉（最深刻）</h3>
   <p class="intro">最致命的情況：好解因為用了多樣的特徵，反而梯度噪聲很大；壞解因為死記答案，噪聲反而很小。SGD 偏好低噪聲，結果選了壞解。</p>
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-D4-1-reversal">
@@ -535,10 +536,10 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION E: 概念問答 -->
 <section id="concepts">
-  <h2>E. 概念問題的嚴格回答</h2>
+  <h2>§6 概念問題的嚴格回答</h2>
   <p class="intro">前面的定理回答了「什麼時候成功、什麼時候失敗」。這一段回答五個常見的概念困惑。</p>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E1. Simplicity vs Flatness</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§6.1 Simplicity vs Flatness</h3>
   <p class="intro">人們常說 SGD 偏好「平坦的解」，但平坦度可以被座標變換隨意改變。真正不變的量是 Σ/H。</p>
   <div class="animation-grid">
     <div class="animation-container h-360" id="anim-E1-1-reparam">
@@ -564,7 +565,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </details>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E2. 最小範數投影</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§6.2 最小範數投影</h3>
   <p class="intro">在線性模型中，SGD 從零出發，不管怎麼隨機抽樣，最終一定走到和 GD 一樣的最小範數解。這是代數性質，與噪聲無關。</p>
   <div class="animation-grid">
     <div class="animation-container h-300" id="anim-E2-1-rowspace">
@@ -592,7 +593,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </details>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E3. 多維 Detailed Balance</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§6.3 多維 Detailed Balance</h3>
   <p class="intro">前面定理 I 的穩態公式之所以這麼漂亮，是因為在一維中「detailed balance」（細緻平衡）自動成立——每個方向的機率流都平衡。但在多維空間中，噪聲可能產生旋轉流，讓穩態不再有簡潔的公式形式。此時需要解一個更難的方程來找「準勢」，它取代了有效勢能 V_eff 的角色。</p>
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-E3-1-rotation">
@@ -623,7 +624,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </details>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E4. 三層條件分類</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§6.4 三層條件分類</h3>
   <p class="intro">SGD 收斂到好解的條件分三層。最外層是「必要條件」：如果連這個都不滿足，SGD 一定找不到好解。中間層是「近似充分」：滿足後大概率找到近似好解。最內層是「嚴格充分」：滿足後以指數高的概率找到好解。了解自己處在哪一層，就知道對 SGD 的信心該有多大。</p>
   <div class="animation-grid">
     <div class="animation-container h-300" id="anim-E4-1-concentric">
@@ -649,7 +650,7 @@ footer a:hover { text-decoration: underline; }
     </div>
   </details>
 
-  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">E5. 各因素的嚴格影響</h3>
+  <h3 style="font-size:var(--text-lg);margin:1.5rem 0 0.5rem">§6.5 各因素的嚴格影響</h3>
   <p class="intro">學習率、batch size、過參數化程度、曲率——每個因素都會改變 SGD 的偏好景觀。有些改變很直觀（η 增大 → 篩選更嚴），有些則微妙（過參數化使噪聲歸零，迫使分析從連續轉向離散）。</p>
   <div class="animation-grid">
     <div class="animation-container h-360" id="anim-E5-1-control-panel">
@@ -684,7 +685,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION F: 噪聲四重角色 -->
 <section id="noise-roles">
-  <h2>F. 噪聲的四重角色</h2>
+  <h2>§7 噪聲的四重角色</h2>
   <p class="intro">前面從不同角度看了 SGD 的成功與失敗。現在退後一步，把噪聲的角色做一個統整。SGD 中的噪聲不只是干擾——它同時扮演四個角色，在不同的機制域中用不同的數學方式發揮作用。</p>
   <div class="animation-grid">
     <div class="animation-container h-500" id="anim-F1-four-roles">
@@ -702,7 +703,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION G: 可驗證預測 -->
 <section id="predictions">
-  <h2>G. 可驗證預測</h2>
+  <h2>§8 可驗證預測</h2>
   <p class="intro">理論的價值在於可否被實驗推翻。這裡列出五個具體預測，任何一個被推翻都意味著理論需要修正。</p>
   <div class="animation-grid single">
     <div class="animation-container h-300" id="anim-G1-dashboard">
@@ -722,7 +723,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- CONCLUSION: 結語 -->
 <section id="conclusion">
-  <h2>回歸命題：這篇報告解決了什麼？</h2>
+  <h2>§9 回歸命題：這篇報告解決了什麼？</h2>
   <p class="intro">在進入未解決的問題之前，讓我們回顧一下整個論證鏈。</p>
   <p>我們從一個簡單的觀察出發：SGD 在實踐中表現得比理論預期更好。它往往能在損失函數的無數個極小值中，找到泛化良好的解。這篇報告的目標是嚴格回答「為什麼」和「什麼時候」。</p>
 
@@ -744,7 +745,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- SECTION H: 未解決問題 -->
 <section id="open">
-  <h2>H. 未解決的關口</h2>
+  <h2>§10 未解決的關口</h2>
   <p class="intro">以上的理論框架在一維、離散正交、和特定條件下是完整的。但要推廣到現實中的深度學習，還需要突破以下五道障礙。</p>
   <div class="animation-grid">
     <div class="animation-container h-400" id="anim-H1-research-map">
