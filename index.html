@@ -3,7 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SGD 為何收斂到好解？</title>
+<title>SGD 為何收斂到好解？其普遍成立的充分條件是什麼？</title>
+<meta name="description" content="SGD 為何收斂到好解？完整數學證明與四類反例。涵蓋非插值域穩態分佈、插值域 Lyapunov 篩選、噪聲四重角色，附互動式 D3 動畫。">
+<meta name="keywords" content="SGD, stochastic gradient descent, convergence, implicit regularization, generalization, Fokker-Planck, Lyapunov, 隨機梯度下降, 收斂理論, 泛化, 機器學習">
+<link rel="canonical" href="https://sgd-convergence-theory.proof.weiqi.kids/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="SGD 為何收斂到好解？其普遍成立的充分條件是什麼？">
+<meta property="og:description" content="兩個閉環定理、四類反例、五個可驗證預測——SGD 隱式正則化的完整理論框架，附互動式視覺化。">
+<meta property="og:url" content="https://sgd-convergence-theory.proof.weiqi.kids/">
+<meta property="og:locale" content="zh_TW">
+<meta property="og:image" content="https://sgd-convergence-theory.proof.weiqi.kids/note.png">
+<meta property="og:image:alt" content="SGD 收斂理論手寫筆記總覽：兩個閉環定理、四類反例、噪聲四重角色">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SGD 為何收斂到好解？">
+<meta name="twitter:description" content="兩個閉環定理、四類反例、五個可驗證預測——SGD 隱式正則化的完整理論框架。">
+<meta name="twitter:image" content="https://sgd-convergence-theory.proof.weiqi.kids/note.png">
+
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -190,11 +209,168 @@ footer {
 footer a { color: var(--color-link); text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 
+/* ===== AI SHARE BUTTON ===== */
+.ai-share-btn {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  font-size: var(--text-xs); color: var(--text-muted);
+  background: none; border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem; padding: 0.15rem 0.5rem;
+  cursor: pointer; margin-left: 0.75rem; vertical-align: middle;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.ai-share-btn:hover {
+  color: var(--color-info); border-color: var(--color-info); background: var(--bg-surface);
+}
+.ai-share-btn.copied {
+  color: var(--color-pass); border-color: var(--color-pass);
+}
+
 /* ===== REDUCED MOTION ===== */
 @media (prefers-reduced-motion: reduce) {
   .scroll-hint { animation: none; }
 }
 </style>
+
+<!-- JSON-LD: ScholarlyArticle -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ScholarlyArticle",
+  "headline": "SGD 為何收斂到好解？其普遍成立的充分條件是什麼？",
+  "description": "SGD 隱式正則化的完整理論框架：兩個閉環定理、四類反例、五個可驗證預測，附互動式視覺化。",
+  "inLanguage": "zh-Hant",
+  "url": "https://sgd-convergence-theory.proof.weiqi.kids/",
+  "image": "https://sgd-convergence-theory.proof.weiqi.kids/note.png",
+  "author": {
+    "@type": "Organization",
+    "name": "weiqi.kids",
+    "url": "https://github.com/weiqi-kids"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "weiqi.kids"
+  },
+  "mainEntityOfPage": "https://sgd-convergence-theory.proof.weiqi.kids/",
+  "about": [
+    "Stochastic Gradient Descent",
+    "Implicit Regularization",
+    "Generalization Theory",
+    "Deep Learning Theory"
+  ],
+  "hasPart": [
+    {
+      "@type": "WebPageElement",
+      "name": "§1 前言：從 SGD 到「好解」",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#prologue",
+      "description": "SGD 的直觀解釋、為何收斂到好解是重要問題、本文核心結論與閱讀地圖。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§2 形式模型與符號",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#model",
+      "description": "SGD 更新公式、梯度噪聲方差 Σ(θ)、三層收斂定義 (C1-C3)、好解四種定義 (G1-G4)、SDE 近似與離散線性化。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§3 定理 I：非插值域閉環",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#theorem1",
+      "description": "SGD-SDE 穩態分佈 p(θ) ∝ (1/Σ)exp(-2V_eff/τ)、有效勢能 V_eff、選擇偏好證明、泛化間隙 Gap ≈ Σ/(H(n-1))。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§4 定理 II：插值域閉環",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#theorem2",
+      "description": "Lyapunov 指數篩選：η h_max > 2 的解被排斥、η h_max < 2 的解穩定、Jacobian 複雜度控制 Rademacher 泛化界。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§5 四類反例",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#counterexamples",
+      "description": "F1 η 太小（Kramers 逃逸陷阱）、F2 η 太大（發散混沌）、F3 無差異化（選擇力退化）、F4 噪聲-泛化反轉。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§6 概念問題的嚴格回答",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#concepts",
+      "description": "Simplicity vs Flatness、最小範數投影、多維 Detailed Balance、三層條件分類、各因素嚴格影響。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§7 噪聲的四重角色",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#noise-roles",
+      "description": "探索（Kramers 逃逸）、選擇（乘性噪聲偏好）、篩選（離散 Lyapunov）、鎖定（精確不動點）。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§8 可驗證預測",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#predictions",
+      "description": "五個可被實驗推翻的具體預測：h_max 預測泛化、臨界相變、噪聲結構 vs 量級、η 單調效應、F4 可觀測性。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§9 結語",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#conclusion",
+      "description": "回顧論證鏈：兩個閉環定理建立了什麼、四類反例劃清了什麼邊界、統一的選擇原理。"
+    },
+    {
+      "@type": "WebPageElement",
+      "name": "§10 未解決的關口",
+      "url": "https://sgd-convergence-theory.proof.weiqi.kids/#open",
+      "description": "多維 V_eff、Jacobian 正交假設、全局軌跡分析、F4 邊界精確化、離散-連續統一。"
+    }
+  ]
+}
+</script>
+
+<!-- JSON-LD: FAQPage (§6 概念問答) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "SGD 偏好的是 Simplicity 還是 Flatness？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "兩者單獨都不是 reparameterization-invariant 的。真正不變的量是 Σ/H（噪聲方差除以 Hessian），它等價於泛化間隙 Gap ≈ Σ/(H(n-1))。Flatness（H 小）和 Simplicity（Σ 小）都可被座標變換改變而不影響泛化，但 Σ/H 是內在幾何量。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "SGD 在線性模型中為何收斂到最小範數解？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "從 w₀=0 出發，SGD 的每步增量都在 row(X) 中，因此 w_t 始終在 row(X) 中。row(X) 中唯一的插值解是 X†y（最小 ℓ₂ 範數解），凸損失上的 SGD 收斂定理保證 w_t → X†y。這是代數性質，與噪聲無關。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "什麼是 Detailed Balance？多維時為何會破缺？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Detailed Balance 要求 curl(Σ⁻¹∇L) = 0。一維自動成立，但多維時噪聲張量 Σ 可能產生旋轉流。破缺時穩態由 Freidlin-Wentzell 準勢決定，需解 Hamilton-Jacobi 方程。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "SGD 收斂到好解的條件分幾層？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "三層：(1) 必要條件：V_eff 全局最小值在好解集中；(2) 充分條件：V_eff 全局最小唯一在好解集中且能隙 Δ>0，此時 P(好解) ≥ 1-(K-1)exp(-2Δ/τ)；(3) 近似充分：所有低 V_eff 極小值都近似好。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "學習率、batch size、過參數化如何影響 SGD 的隱式偏好？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "η 增大：插值域篩選更嚴（M_η 縮小），泛化界收緊。B 增大：溫度 τ=η/B 下降，分佈更集中。過參數化（d>n）：插值流形上 Σ=0，SDE 退化，轉為離散分析。Hessian 譜：泛化間隙由 tr(H⁻¹Σ) 決定，平坦方向主導。"
+      }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -2970,6 +3146,162 @@ document.addEventListener('DOMContentLoaded', () => {
     // fallback: wait for load
     window.addEventListener('load', setupKaTeXLazy);
   }
+});
+
+// ================================================================
+// AI SHARE BUTTONS
+// ================================================================
+const aiSections = [
+  {
+    id: 'prologue',
+    summary: 'SGD（隨機梯度下降）每步只用一筆隨機抽樣的資料更新參數，引入隨機噪聲。實驗反覆顯示 SGD 能找到泛化好的「好解」，即使好解在參數空間中比例極小。本文證明 SGD 收斂到好解等價於四個條件同時成立：(1) 學習率夠大使盆地間混合、(2) 學習率不至於太大使 SGD 發散、(3) 好解與壞解的 per-sample 靈敏度有差異、(4) 低靈敏度確實對應好泛化。',
+    formulas: []
+  },
+  {
+    id: 'model',
+    summary: '建立共同語言：SGD 的數學定義、梯度噪聲方差、三層收斂定義、好解的四種 reparameterization-invariant 定義 (G1-G4)，以及連續 SDE 近似和離散線性化兩套分析框架。',
+    formulas: [
+      'SGD 迭代：θ_{t+1} = θ_t - η ∇ℓ_{z_t}(θ_t)',
+      '噪聲方差：Σ(θ) = (1/n)Σᵢ [ℓ\'ᵢ(θ)]² - [L\'(θ)]²',
+      'SDE 近似：dθ = -∇L dt + √(τΣ(θ)) dW_t, τ = η/B'
+    ]
+  },
+  {
+    id: 'theorem1',
+    summary: '非插值域（訓練損失不為零）：SGD 的乘性噪聲使穩態分佈偏好低噪聲比 Σ/H 的盆地。而低 Σ/H 的盆地恰好泛化更好（Gap ≈ Σ/(H(n-1))）。三部分閉環：動力學 → 選擇 → 泛化。',
+    formulas: [
+      '穩態分佈：p(θ) = (1/Z) · (1/Σ(θ)) · exp(-(2/τ) ∫ L\'(s)/Σ(s) ds)',
+      '有效勢能：V_eff(θ) = ∫ L\'(s)/Σ(s) ds + (τ/2) ln Σ(θ)',
+      '選擇偏好：p(θ_A)/p(θ_B) = Σ_B/Σ_A > 1',
+      '泛化間隙：Gap ≈ Σ/(H(n-1))'
+    ]
+  },
+  {
+    id: 'theorem2',
+    summary: '插值域（訓練損失為零）：連續 SDE 近似失效，但 SGD 的離散步長成為篩選器。學習率 η 決定臨界門檻 2/η，per-sample Hessian h_max 超過門檻的解被 Lyapunov 不穩定性排斥，留下的解有低 Jacobian 複雜度和可證明的泛化界。',
+    formulas: [
+      '臨界學習率：η_c = 2/h_max',
+      'Lyapunov 指數：λ_k = (1/n) ln|1 - ηh_k|',
+      'Jacobian 複雜度：C(θ*) = ||J||_F / √n',
+      '泛化界：L_pop ≤ O(ρ/√(ηn))'
+    ]
+  },
+  {
+    id: 'counterexamples',
+    summary: '四類反例精確描述理論邊界：F1 η 太小（Kramers 逃逸時間指數爆炸，SGD 被鎖在壞解）；F2 η 太大（Lyapunov 指數為正，SGD 發散）；F3 好壞解的 Σ/H 相同（SGD 無法區分，50% 機率停在壞解）；F4 噪聲-泛化反轉（好解噪聲高、壞解噪聲低，SGD 偏好壞解——最深刻的失敗模式）。',
+    formulas: [
+      'F1 Kramers 時間：τ_{escape} ~ (1/η) exp(ΔV/η)',
+      'F2 發散條件：η > 2/λ_max',
+      'F3 退化條件：Σ_A/H_A = Σ_B/H_B',
+      'F4 反轉：好解 Σ 高 → SGD 偏好壞解'
+    ]
+  },
+  {
+    id: 'concepts',
+    summary: '五個概念問答：(1) Σ/H 是唯一 reparameterization-invariant 的量，平坦度和簡單性單獨都不可靠；(2) 線性模型中 SGD 代數性地收斂到最小範數解；(3) 多維 detailed balance 破缺時需要準勢取代有效勢能；(4) 條件分三層（必要/充分/近似充分）；(5) η、B、過參數化、曲率各自的影響。',
+    formulas: [
+      'Reparameterization 不變性：Σ̃/H̃ = Σ/H',
+      '最小範數解：w* = X†y = Xᵀ(XXᵀ)⁻¹y',
+      'Detailed Balance 條件：curl(Σ⁻¹∇L) = 0',
+      '充分條件下：P(好解) ≥ 1 - (K-1)exp(-2Δ/τ)'
+    ]
+  },
+  {
+    id: 'noise-roles',
+    summary: '噪聲的四重角色統整：探索（Kramers 逃逸，連續+離散）、選擇（乘性噪聲偏好低 Σ，連續 SDE）、篩選（h_max > 2/η 被排斥，純離散）、鎖定（∇ℓ_i = 0 → 精確不動點，純離散）。核心洞見：插值域的正則化完全是離散效應。',
+    formulas: [
+      '探索：逃逸時間 ~ exp(-ΔV/τ)',
+      '選擇：V_eff ≠ L，偏好低 Σ',
+      '篩選：λ = (1/n) ln|1-ηh_k| > 0 → 排斥',
+      '鎖定：∇ℓ_i(θ*) = 0 → 精確不動點'
+    ]
+  },
+  {
+    id: 'predictions',
+    summary: '五個可被實驗推翻的預測：(1) h_max 預測泛化優於 Hessian 跡或 flatness；(2) η ≈ 2/h_max 處存在尖銳相變；(3) 等量級各向同性噪聲取代 SGD 噪聲後泛化下降；(4) 插值域中 η 增大 → Jacobian 複雜度 C 單調下降；(5) 小數據大模型設定中過擬合解 Σ 低於泛化解 Σ。',
+    formulas: []
+  },
+  {
+    id: 'conclusion',
+    summary: '兩個閉環定理各自在不同機制域完整回答「SGD 為何偏好好解」。四類反例精確劃清適用邊界。統一選擇原理：SGD 的隨機性充當 per-sample 靈敏度的篩選器，在非插值域表現為穩態偏好低 Σ/H，在插值域表現為 Lyapunov 排斥高 h_max。',
+    formulas: [
+      '統一條件：SGD 收斂到好解 ⟺ ¬F1 ∧ ¬F2 ∧ ¬F3 ∧ ¬F4'
+    ]
+  },
+  {
+    id: 'open',
+    summary: '五道未解決障礙：(1) 多維有效勢能（Freidlin-Wentzell 準勢，NP-hard 變分問題）；(2) Jacobian 正交假設（需非交換隨機矩陣乘積理論）；(3) 全局軌跡分析（從初始化到好解盆地）；(4) F4 邊界精確化（Corr(Σ, Gap) > 0 何時成立）；(5) 離散-連續統一（Σ → 0 極限銜接）。',
+    formulas: []
+  }
+];
+
+const sectionTitles = {
+  prologue: '§1 前言：從 SGD 到「好解」',
+  model: '§2 形式模型與符號',
+  theorem1: '§3 定理 I：非插值域閉環',
+  theorem2: '§4 定理 II：插值域閉環',
+  counterexamples: '§5 四類反例',
+  concepts: '§6 概念問題的嚴格回答',
+  'noise-roles': '§7 噪聲的四重角色',
+  predictions: '§8 可驗證預測',
+  conclusion: '§9 回歸命題：這篇報告解決了什麼？',
+  open: '§10 未解決的關口'
+};
+
+function buildAIPrompt(sec) {
+  const title = sectionTitles[sec.id] || sec.id;
+  let text = `以下是一篇關於 SGD 收斂理論的文章中「${title}」段落的內容，請幫我深入分析與討論。\n\n`;
+  text += `## 摘要\n${sec.summary}\n`;
+  if (sec.formulas.length > 0) {
+    text += `\n## 關鍵公式\n`;
+    sec.formulas.forEach(f => { text += `- ${f}\n`; });
+  }
+  text += `\n## 來源\nhttps://sgd-convergence-theory.proof.weiqi.kids/#${sec.id}\n`;
+  return text;
+}
+
+function insertAIButtons() {
+  aiSections.forEach(sec => {
+    const section = document.getElementById(sec.id);
+    if (!section) return;
+    const h2 = section.querySelector('h2');
+    if (!h2) return;
+    const btn = document.createElement('button');
+    btn.className = 'ai-share-btn';
+    btn.setAttribute('aria-label', '複製本段摘要，可直接貼到 ChatGPT 或 Claude 討論');
+    btn.setAttribute('title', '複製本段摘要，可直接貼到 ChatGPT / Claude');
+    btn.textContent = '💬 與 AI 討論';
+    btn.addEventListener('click', async () => {
+      const prompt = buildAIPrompt(sec);
+      try {
+        await navigator.clipboard.writeText(prompt);
+        btn.textContent = '✓ 已複製';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '💬 與 AI 討論';
+          btn.classList.remove('copied');
+        }, 1500);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = prompt;
+        ta.style.cssText = 'position:fixed;left:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✓ 已複製';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '💬 與 AI 討論';
+          btn.classList.remove('copied');
+        }, 1500);
+      }
+    });
+    h2.appendChild(btn);
+  });
+}
+
+insertAIButtons();
 });
 </script>
 </body>
