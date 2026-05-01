@@ -1053,7 +1053,250 @@ registerAnim('B2-good-bad', (container) => {
 });
 
 // ========== SECTION C1 ==========
-// Task 4
+registerAnim('C1-1-veff', (container) => {
+  const W = 700, H = 320, margin = { top: 20, right: 120, bottom: 40, left: 50 };
+  const { canvas, ctx, w: cw, h: ch } = createCanvas(container, W, H);
+  const pw = W - margin.left - margin.right, ph = (H - margin.top - margin.bottom) / 2 - 10;
+
+  const a = 0.25, b = 2, c = 4;
+  const sigmaFn = (t) => 2.5 - 1.5 * Math.tanh(t); // Σ_A=1 at θ=-2, Σ_B=4 at θ=+2
+  const Vprime = (t) => doubleWellPrime(t, a, b);
+
+  let tau = 0.5;
+  const N = 50;
+  let particles = Array.from({length: N}, () => (Math.random() - 0.5) * 6);
+
+  const xS = d3.scaleLinear().domain([-3.5, 3.5]).range([margin.left, margin.left + pw]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.05);
+
+  function getLScale() { return d3.scaleLinear().domain([0, 8]).range([margin.top + ph, margin.top]); }
+  function getVeffScale() {
+    const veffVals = thetaVals.map(t => {
+      let integral = 0;
+      for (let s = -3.5; s < t; s += 0.05) integral += (doubleWellPrime(s, a, b) / sigmaFn(s)) * 0.05;
+      return (2/tau) * integral + (tau/2) * Math.log(sigmaFn(t));
+    });
+    const minV = d3.min(veffVals);
+    return { scale: d3.scaleLinear().domain([minV - 0.5, minV + 8]).range([margin.top + ph + 30 + ph, margin.top + ph + 30]), vals: veffVals };
+  }
+
+  createSlider(container, {
+    label: 'τ', min: 0.01, max: 2.0, step: 0.01, default: 0.5,
+    format: v => v.toFixed(2),
+    onChange: v => { tau = v; particles = Array.from({length: N}, () => (Math.random()-0.5)*6); }
+  });
+
+  let frame = 0, burnin = 0;
+  function draw() {
+    ctx.clearRect(0, 0, cw, ch);
+    const lS = getLScale();
+    const { scale: vS, vals: veffVals } = getVeffScale();
+
+    // Draw L(θ) curve
+    ctx.beginPath(); ctx.strokeStyle = C.text; ctx.lineWidth = 2;
+    thetaVals.forEach((t, i) => {
+      const x = xS(t), y = lS(doubleWell(t, a, b, c));
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = C.textSec; ctx.font = '13px sans-serif';
+    ctx.fillText('L(θ)', margin.left + 5, margin.top + 12);
+
+    // Draw V_eff curve
+    ctx.beginPath(); ctx.strokeStyle = C.info; ctx.lineWidth = 2;
+    thetaVals.forEach((t, i) => {
+      const x = xS(t), y = vS(veffVals[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = C.info; ctx.font = '13px sans-serif';
+    ctx.fillText('V_eff(θ)', margin.left + 5, margin.top + ph + 42);
+
+    // Labels
+    ctx.fillStyle = C.pass; ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('A', xS(-2) - 4, lS(doubleWell(-2, a, b, c)) - 8);
+    ctx.fillStyle = C.fail;
+    ctx.fillText('B', xS(2) - 4, lS(doubleWell(2, a, b, c)) - 8);
+
+    // Simulate particles on V_eff
+    for (let i = 0; i < N; i++) {
+      particles[i] = emStep(particles[i], Vprime, sigmaFn, tau, 0.01);
+      particles[i] = Math.max(-3.4, Math.min(3.4, particles[i]));
+    }
+    burnin++;
+
+    // Draw particles on V_eff curve
+    ctx.fillStyle = C.info;
+    particles.forEach(p => {
+      let integral = 0;
+      for (let s = -3.5; s < p; s += 0.1) integral += (doubleWellPrime(s, a, b) / sigmaFn(s)) * 0.1;
+      const veff = (2/tau) * integral + (tau/2) * Math.log(sigmaFn(p));
+      ctx.beginPath();
+      ctx.arc(xS(p), vS(veff), 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Count particles in each well
+    const countA = particles.filter(p => p < 0).length;
+    const countB = N - countA;
+    const ratio = countB > 0 ? (countA / countB).toFixed(1) : '∞';
+
+    // Value box
+    ctx.fillStyle = C.warn; ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(`p(A)/p(B) ≈ ${burnin > 100 ? ratio : '...'}`, W - 115, margin.top + ph + 80);
+    ctx.fillStyle = C.muted; ctx.font = '11px sans-serif';
+    ctx.fillText(`理論值: ${(sigmaFn(2)/sigmaFn(-2)).toFixed(1)}`, W - 115, margin.top + ph + 100);
+  }
+
+  function animate() {
+    const reg = animRegistry['C1-1-veff'];
+    if (!reg || !reg.playing) return;
+    frame++;
+    if (frame % 2 === 0) draw();
+    reg.rafId = requestAnimationFrame(animate);
+  }
+  if (!reducedMotion) { animRegistry['C1-1-veff'].playing = true; animRegistry['C1-1-veff'].rafId = requestAnimationFrame(animate); }
+  else draw();
+});
+
+registerAnim('C1-2-loo', (container) => {
+  const W = 500, H = 360, margin = { top: 30, right: 20, bottom: 50, left: 50 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right;
+  const halfH = (H - margin.top - margin.bottom) / 2 - 15;
+
+  // Two sub-plots: Solution A (top) and Solution B (bottom)
+  [{ label: '解 A（低 Σ）', color: C.pass, shift: 0.02, yOff: margin.top },
+   { label: '解 B（高 Σ）', color: C.fail, shift: 0.15, yOff: margin.top + halfH + 30 }].forEach(config => {
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${config.yOff})`);
+    g.append('text').attr('x', 0).attr('y', -5).attr('font-size', 13).attr('font-weight', 600).attr('fill', config.color).text(config.label);
+
+    const n = 8;
+    const xS = d3.scaleLinear().domain([0, 7]).range([0, pw]);
+    const yS = d3.scaleLinear().domain([-0.5, 1.5]).range([halfH, 0]);
+    const xData = d3.range(n);
+    const yData = xData.map(x => 0.5 + 0.3 * Math.sin(x * 0.8) + 0.1 * Math.cos(x * 1.2));
+
+    // Fit curve
+    const curvePoints = d3.range(0, 7.01, 0.1).map(x => [x, 0.5 + 0.3*Math.sin(x*0.8) + 0.1*Math.cos(x*1.2)]);
+    const fitLine = d3.line().x(d => xS(d[0])).y(d => yS(d[1])).curve(d3.curveBasis);
+    const curvePath = g.append('path').datum(curvePoints).attr('d', fitLine)
+      .attr('fill', 'none').attr('stroke', config.color).attr('stroke-width', 2);
+
+    // Data points
+    const dots = g.selectAll('circle').data(xData).enter().append('circle')
+      .attr('cx', d => xS(d)).attr('cy', d => yS(yData[d])).attr('r', 4).attr('fill', C.text);
+
+    // LOO animation
+    let loIdx = 0;
+    function looStep() {
+      dots.attr('fill', C.text).attr('opacity', 1);
+      d3.select(dots.nodes()[loIdx]).attr('fill', C.muted).attr('opacity', 0.3);
+      // Shifted curve
+      const shifted = d3.range(0, 7.01, 0.1).map(x => {
+        const base = 0.5 + 0.3*Math.sin(x*0.8) + 0.1*Math.cos(x*1.2);
+        return [x, base + config.shift * Math.sin((x - loIdx) * 1.5)];
+      });
+      curvePath.transition().duration(400).attr('d', fitLine(shifted));
+      loIdx = (loIdx + 1) % n;
+    }
+    setInterval(looStep, 1500);
+
+    // Gap label
+    const gapVal = config.shift < 0.1 ? '小' : '大';
+    g.append('text').attr('x', pw).attr('y', halfH + 15).attr('text-anchor', 'end')
+      .attr('font-size', 11).attr('fill', config.color).text(`Gap ≈ Σ/(H(n-1)) → ${gapVal}`);
+  });
+});
+
+registerAnim('C1-3-fpe', (container) => {
+  const W = 500, H = 360, margin = { top: 20, right: 200, bottom: 40, left: 50 };
+  const svg = createSVG(container, W, H);
+  const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const xS = d3.scaleLinear().domain([-3.5, 3.5]).range([0, pw]);
+  const yS = d3.scaleLinear().domain([0, 1]).range([ph, 0]);
+  const thetaVals = d3.range(-3.5, 3.51, 0.1);
+
+  // Precompute keyframes: uniform → steady state
+  const a = 0.25, b = 2, c = 4, tau = 0.5;
+  const sigmaFn = (t) => 2.5 - 1.5 * Math.tanh(t);
+  function steadyState(t) {
+    let integral = 0;
+    for (let s = -3.5; s < t; s += 0.05) integral += (doubleWellPrime(s, a, b) / sigmaFn(s)) * 0.05;
+    return (1 / sigmaFn(t)) * Math.exp(-(2/tau) * integral);
+  }
+  const ssVals = thetaVals.map(steadyState);
+  const ssMax = d3.max(ssVals);
+  const ssNorm = ssVals.map(v => v / ssMax);
+
+  const numFrames = 10;
+  const keyframes = [];
+  for (let f = 0; f <= numFrames; f++) {
+    const t = f / numFrames;
+    keyframes.push(thetaVals.map((_, i) => {
+      const uniform = 1 / thetaVals.length * ssMax;
+      return (1 - t) * (uniform / ssMax) + t * ssNorm[i];
+    }));
+  }
+
+  const lineGen = d3.line().x((_, i) => xS(thetaVals[i])).y(d => yS(d)).curve(d3.curveBasis);
+  const densityPath = g.append('path').attr('fill', C.info).attr('fill-opacity', 0.2)
+    .attr('stroke', C.info).attr('stroke-width', 2);
+  // Area fill
+  const areaGen = d3.area().x((_, i) => xS(thetaVals[i])).y0(ph).y1(d => yS(d)).curve(d3.curveBasis);
+
+  // Steps panel on the right
+  const steps = [
+    'FPE: ∂p/∂t = ∂[L\'p] + (τ/2)∂²[Σp]',
+    '穩態: ∂p/∂t = 0',
+    '機率流 J = const',
+    '邊界條件 → J ≡ 0',
+    'L\'p + (τ/2)(Σp)\' = 0',
+    'p\'/p = -2L\'/(τΣ) - Σ\'/Σ',
+    '辨識為全微分',
+    '積分兩側',
+    '取指數',
+    'p ∝ (1/Σ)exp(-(2/τ)V_eff) ∎',
+  ];
+  const stepsG = svg.append('g').attr('transform', `translate(${margin.left + pw + 15}, ${margin.top})`);
+  const stepTexts = steps.map((s, i) => {
+    return stepsG.append('text').attr('x', 0).attr('y', i * (ph / steps.length) + 12)
+      .attr('font-size', 10).attr('fill', C.muted).text(`${i+1}. ${s}`);
+  });
+
+  let currentFrame = 0;
+  let autoTimer = null;
+
+  function renderFrame(f) {
+    currentFrame = f;
+    densityPath.attr('d', areaGen(keyframes[f]));
+    stepTexts.forEach((t, i) => {
+      t.attr('fill', i <= f ? C.info : C.muted).attr('font-weight', i === f ? 700 : 400);
+    });
+  }
+  renderFrame(0);
+
+  // Auto-advance every 2s
+  function startAuto() {
+    autoTimer = setInterval(() => {
+      if (currentFrame < numFrames) renderFrame(currentFrame + 1);
+      else { clearInterval(autoTimer); autoTimer = null; }
+    }, 2000);
+  }
+
+  // Click to jump
+  stepTexts.forEach((t, i) => {
+    t.style('cursor', 'pointer').on('click', () => {
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      renderFrame(i);
+    });
+  });
+
+  if (!reducedMotion) startAuto();
+  else renderFrame(numFrames);
+});
 
 // ========== SECTION C2 ==========
 // Task 5
