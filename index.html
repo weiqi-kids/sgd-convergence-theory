@@ -223,7 +223,7 @@ footer a:hover { text-decoration: underline; }
 <section class="hero" id="hero">
   <h1>SGD 為何收斂到好解？</h1>
   <p class="subtitle">其普遍成立的充分條件是什麼？</p>
-  <div class="animation-container h-350" id="anim-hero-potential">
+  <div class="animation-container h-400" id="anim-hero-potential">
     <div class="d3-canvas"></div>
   </div>
   <div class="scroll-hint">↓</div>
@@ -972,7 +972,7 @@ function setupKaTeXLazy() {
 
 // ========== HERO ==========
 registerAnim('hero-potential', (container) => {
-  const W = 700, H = 300, margin = { top: 20, right: 150, bottom: 40, left: 50 };
+  const W = 700, H = 400, margin = { top: 20, right: 150, bottom: 60, left: 50 };
   const svg = createSVG(container, W, H);
   const pw = W - margin.left - margin.right, ph = H - margin.top - margin.bottom;
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
@@ -991,10 +991,10 @@ registerAnim('hero-potential', (container) => {
     .attr('fill', 'none').attr('stroke', C.text).attr('stroke-width', 2.5);
 
   // Labels for wells
-  g.append('text').attr('x', xScale(-2)).attr('y', yScale(doubleWell(-2, a, b, c)) + 25)
-    .attr('text-anchor', 'middle').attr('fill', C.pass).attr('font-size', 14).attr('font-weight', 700).text('好解 A');
-  g.append('text').attr('x', xScale(2)).attr('y', yScale(doubleWell(2, a, b, c)) + 25)
-    .attr('text-anchor', 'middle').attr('fill', C.fail).attr('font-size', 14).attr('font-weight', 700).text('壞解 B');
+  g.append('text').attr('x', xScale(-2)).attr('y', yScale(doubleWell(-2, a, b, c)) + 35)
+    .attr('text-anchor', 'middle').attr('fill', C.pass).attr('font-size', 18).attr('font-weight', 700).text('好解 A');
+  g.append('text').attr('x', xScale(2)).attr('y', yScale(doubleWell(2, a, b, c)) + 35)
+    .attr('text-anchor', 'middle').attr('fill', C.fail).attr('font-size', 18).attr('font-weight', 700).text('壞解 B');
 
   // Particle
   let theta = 1.8; // start near B
@@ -1013,8 +1013,8 @@ registerAnim('hero-potential', (container) => {
   const condG = svg.append('g').attr('transform', `translate(${W - 140}, ${margin.top + 10})`);
   const conds = ['¬F1', '¬F2', '¬F3', '¬F4'];
   conds.forEach((label, i) => {
-    condG.append('text').attr('x', 0).attr('y', i * 28).attr('fill', C.pass)
-      .attr('font-size', 16).attr('font-weight', 700).text('✓ ' + label);
+    condG.append('text').attr('x', 0).attr('y', i * 35).attr('fill', C.pass)
+      .attr('font-size', 18).attr('font-weight', 700).text('✓ ' + label);
   });
 
   // Animate
