@@ -1,0 +1,1209 @@
+%%% Discrete Lyapunov Stability of SGD in the Interpolation Regime:
+%%% Per-Sample Analysis and Generalization Bounds
+%%%
+%%% A self-contained discrete-time analysis.
+%%% No SDE approximation; all results hold directly for the SGD recursion.
+
+\documentclass[11pt,a4paper]{article}
+
+%% ---------- packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+%% ---------- theorem environments ----------
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+%% ---------- macros ----------
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\spn}{span}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\KL}{KL}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cC}{\mathcal{C}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cG}{\mathcal{G}}
+\newcommand{\cH}{\mathcal{H}}
+\newcommand{\bJ}{\mathbf{J}}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+
+%% ---------- metadata ----------
+\title{\Large Discrete Lyapunov Stability of SGD in the Interpolation Regime:\\[4pt]
+  \large Per-Sample Analysis and Generalization Bounds}
+\author{
+  C$\Lambda$ / Lightman\\
+  \texttt{Lightman.chang@gmail.com}
+}
+\date{}
+
+%% =================================================================
+\begin{document}
+\maketitle
+
+%% =================================================================
+%% ABSTRACT
+%% =================================================================
+\begin{abstract}
+We study the implicit regularization of stochastic gradient descent (SGD) in the
+interpolation regime, where the training loss reaches zero and the continuous-time
+stochastic differential equation (SDE) approximation degenerates because the gradient
+noise covariance vanishes at every interpolating solution.  Working directly with the
+discrete SGD recursion, we introduce the \emph{per-sample Lyapunov exponent}
+$\lambda_k = \frac{1}{n}\ln|1 - \eta h_k|$, where $h_k = \|J_k\|^2$ is the
+per-sample curvature and $\eta$ is the learning rate.  Under a Jacobian orthogonality
+assumption, we establish that every interpolating solution with
+$h_{\max} > 2/\eta$ is almost surely unstable (positive maximal Lyapunov exponent),
+while every solution with $h_{\max} < 2/\eta$ is almost surely asymptotically
+stable.  We then derive a closed-loop chain:
+\emph{SGD stability} $\Rightarrow$ \emph{Jacobian complexity control}
+($\cC \leq \sqrt{2/\eta}$) $\Rightarrow$ \emph{Rademacher complexity bound}
+$\Rightarrow$ \emph{generalization bound} $O(\rho/\sqrt{\eta n})$.
+This mechanism is primarily a discrete phenomenon that does not rely on any
+SDE approximation.  We additionally provide a PAC-Bayes bound that eliminates the
+dependence on the neighborhood radius~$\rho$.  Our analysis clarifies the distinction
+between per-sample stability ($h_{\max} < 2/\eta$) and aggregate spectral conditions
+such as $\tr(H) \leq 2/\eta$, and connects stability-based selection to
+generalization through an explicit, verifiable complexity measure.
+\end{abstract}
+
+%% =================================================================
+\section{Introduction}\label{sec:intro}
+%% =================================================================
+
+Modern overparameterized neural networks routinely achieve zero training loss---a
+regime known as \emph{interpolation}---yet generalize well to unseen data.
+Understanding why stochastic gradient descent (SGD) selects, among the continuum of
+interpolating solutions, those that generalize is a central open problem in the
+theory of deep learning.
+
+\paragraph{Background.}
+A fruitful line of work models SGD through its continuous-time SDE approximation
+\cite{LiTaiE2017,SmithLe2018}:
+\[
+  d\theta = -\nabla L(\theta)\,dt + \sqrt{\tfrac{\eta}{B}\,\Sigma(\theta)}\;dW_t,
+\]
+where $\Sigma(\theta) = \frac{1}{n}\sum_{i=1}^n \nabla\ell_i(\theta)
+\nabla\ell_i(\theta)^\top - \nabla L(\theta)\nabla L(\theta)^\top$ is the gradient
+noise covariance.  The multiplicative structure of $\Sigma$ biases the
+Fokker--Planck stationary distribution toward minima with low noise-to-curvature
+ratio $\Sigma/H$ \cite{ChaudhariSoatto2018}.  This provides a satisfying explanation
+of implicit regularization---\emph{when} $\Sigma > 0$.
+
+In the interpolation regime, however, every interpolating solution $\theta^*$
+satisfies $\nabla\ell_i(\theta^*) = 0$ for all $i$, so $\Sigma(\theta^*) = 0$.
+The SDE approximation degenerates and the Fokker--Planck analysis breaks down
+entirely.
+
+\paragraph{Known results.}
+Wu and Su~\cite{WuSu2023} proved that SGD cannot converge to interpolating solutions
+at which $\tr(H) > 2/\eta$, establishing an aggregate spectral condition for
+instability.  Wu, Wang, and Su~\cite{WuWangSu2022} studied the sharpness reduction
+phenomenon.  Dinh et al.~\cite{Dinh2017} demonstrated that sharpness (Hessian
+eigenvalues) alone is not reparameterization-invariant and hence cannot serve as a
+sole predictor of generalization.
+
+\paragraph{The gap.}
+The condition $\tr(H) > 2/\eta$ is an aggregate condition: it sums over all
+eigenvalues and does not distinguish between having one very large per-sample
+curvature versus many moderately large ones.  Moreover, the connection from instability
+to generalization has remained informal.
+
+\paragraph{Our contribution.}
+We provide a complete, self-contained analysis that:
+\begin{enumerate}[label=(\roman*)]
+  \item introduces the per-sample Lyapunov exponent
+    $\lambda_k = \frac{1}{n}\ln|1 - \eta h_k|$ and establishes that stability is
+    governed by $h_{\max} < 2/\eta$ rather than the aggregate $\tr(H) < 2/\eta$;
+  \item proves that stable solutions have controlled Jacobian complexity
+    $\cC(\theta^*) \leq \sqrt{2/\eta}$;
+  \item derives a Rademacher-based generalization bound of order
+    $O(\rho/\sqrt{\eta n})$ and a PAC-Bayes bound of order
+    $O(\sqrt{d\ln(1/\eta)/n})$;
+  \item assembles these into a closed-loop theorem: SGD stability $\Rightarrow$
+    complexity control $\Rightarrow$ generalization.
+\end{enumerate}
+
+The entire analysis works directly on the discrete SGD recursion and does not
+invoke any SDE approximation.  The key mechanism---linear stability filtering via
+random matrix products---is primarily a discrete phenomenon.
+
+\paragraph{Paper structure.}
+\Cref{sec:setup} introduces notation and the interpolation setting.
+\Cref{sec:definitions} presents the core definitions (critical learning rate,
+good/bad solutions, Jacobian complexity).
+\Cref{sec:assumptions} states the assumptions.
+\Cref{sec:main} presents the main results: two lemmas, six theorems, and one
+corollary.
+\Cref{sec:proofs} contains the complete proofs.
+\Cref{sec:reparam} discusses reparameterization invariance.
+\Cref{sec:discussion} provides connections to the non-interpolation regime,
+testable predictions, limitations, and open problems.
+\Cref{sec:related} reviews related work.
+
+%% =================================================================
+\section{Setup and Notation}\label{sec:setup}
+%% =================================================================
+
+Let $S = \{(x_i, y_i)\}_{i=1}^n$ be a training set with
+$(x_i, y_i) \stackrel{\text{i.i.d.}}{\sim} \cD$.
+Consider a model $f_\theta \colon \cX \to \R$ parameterized by
+$\theta \in \R^d$, with $d > n$ (overparameterized regime).
+Define the per-sample MSE loss and the empirical risk:
+\[
+  \ell_i(\theta) = \tfrac{1}{2}\bigl(f_\theta(x_i) - y_i\bigr)^2,
+  \qquad
+  L(\theta) = \frac{1}{n}\sum_{i=1}^n \ell_i(\theta).
+\]
+
+\paragraph{Interpolation manifold.}
+The set of global minimizers of $L$ with zero training loss is
+\[
+  \cM = \bigl\{\theta \in \R^d : f_\theta(x_i) = y_i,\;\forall\, i \in [n]\bigr\}.
+\]
+Since $d > n$, generically $\cM$ is a smooth submanifold of dimension at least $d - n$.
+
+\paragraph{Per-sample quantities at $\theta^* \in \cM$.}
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Jacobian vectors:} $J_i = \nabla_\theta f_{\theta^*}(x_i) \in \R^d$.
+  \item \textbf{Jacobian matrix:} $\bJ \in \R^{n \times d}$, with the $i$-th row
+    equal to $J_i^\top$.
+  \item \textbf{Per-sample Hessian:}
+    $H_i = J_i J_i^\top$.
+    At $\theta^* \in \cM$ the residual $r_i(\theta^*) = f_{\theta^*}(x_i) - y_i = 0$,
+    so $\nabla^2 \ell_i(\theta^*) = H_i$.
+  \item \textbf{Per-sample curvature:} $h_i = \|J_i\|^2$.
+  \item \textbf{Maximum curvature:} $h_{\max} = \max_{i \in [n]} h_i$.
+  \item \textbf{Active subspace:} $\cS = \spn(J_1, \ldots, J_n)$.
+\end{itemize}
+
+\paragraph{SGD recursion.}
+\[
+  \theta_{t+1} = \theta_t - \eta\,\nabla\ell_{z_t}(\theta_t),
+  \qquad z_t \sim \mathrm{Uniform}([n]) \;\text{i.i.d.}
+\]
+
+\paragraph{Population risk.}
+$L_{\mathrm{pop}}(\theta) = \E_{(x,y)\sim\cD}[\ell(f_\theta(x), y)]$.
+
+%% =================================================================
+\section{Definitions}\label{sec:definitions}
+%% =================================================================
+
+\begin{definition}[Critical learning rate]\label{def:eta-c}
+  For an interpolating solution $\theta^* \in \cM$, the \emph{critical learning rate}
+  is
+  \[
+    \eta_c(\theta^*) = \frac{2}{h_{\max}(\theta^*)}.
+  \]
+\end{definition}
+
+\begin{definition}[Good and bad solutions]\label{def:good-bad}
+  Given a learning rate $\eta > 0$:
+  \begin{itemize}
+    \item $\theta^*$ is \textbf{$\eta$-stable} (good, flat) if
+      $\eta < \eta_c(\theta^*)$, equivalently $\eta\, h_{\max} < 2$.
+    \item $\theta^*$ is \textbf{$\eta$-unstable} (bad, sharp) if
+      $\eta > \eta_c(\theta^*)$, equivalently $\eta\, h_{\max} > 2$.
+  \end{itemize}
+  The set of $\eta$-stable interpolating solutions is
+  $\cM_\eta = \{\theta^* \in \cM : h_{\max}(\theta^*) < 2/\eta\}$.
+\end{definition}
+
+\begin{definition}[Jacobian complexity]\label{def:jac-complex}
+  \[
+    \cC(\theta^*) = \sqrt{\frac{1}{n}\sum_{i=1}^n h_i(\theta^*)}
+    = \frac{\|\bJ(\theta^*)\|_F}{\sqrt{n}}.
+  \]
+\end{definition}
+
+\begin{remark}[Physical intuition]\label{rem:intuition}
+  The quantity $h_i = \|\nabla_\theta f_{\theta^*}(x_i)\|^2$ measures the sensitivity
+  of the model output at $x_i$ with respect to the parameters.  A good interpolating
+  solution is one where no training sample requires the model to be in a
+  high-sensitivity configuration.  A bad interpolating solution has at least one
+  sample $x_i$ for which the model must precisely ``align'' its parameters to
+  interpolate; such alignment cannot be maintained under the stochastic perturbations
+  of SGD.
+\end{remark}
+
+%% =================================================================
+\section{Assumptions}\label{sec:assumptions}
+%% =================================================================
+
+\begin{assumption}[Local smoothness]\label{A:smooth}
+  $f_\theta(x)$ is twice continuously differentiable in $\theta$.  In a neighborhood
+  $B(\theta^*, r_0)$ of $\theta^*$,
+  \[
+    \|\nabla^2_\theta f_\theta(x_i)\|_{\mathrm{op}} \leq B_2
+    \quad \text{for all } i \in [n].
+  \]
+\end{assumption}
+
+\begin{assumption}[Jacobian independence]\label{A:indep}
+  $\{J_1, \ldots, J_n\}$ are linearly independent, so $\dim \cS = n$.
+\end{assumption}
+
+\begin{assumption}[Jacobian orthogonality]\label{A:orth}
+  $J_i^\top J_j = 0$ for all $i \neq j$.
+\end{assumption}
+
+\begin{remark}[On the orthogonality assumption]\label{rem:orth}
+  \Cref{A:orth} is a technical assumption that enables complete decoupling of the
+  stability analysis into $n$ independent scalar problems.  We emphasize that this
+  is a genuine restriction: whitening the kernel matrix $K = \bJ\bJ^\top$
+  diagonalizes $K$ but does \emph{not} make the Jacobian vectors $J_i$ orthogonal
+  in parameter space (it only orthogonalizes them in the $n$-dimensional output
+  space).  Thus the NTK regime does not automatically satisfy \Cref{A:orth}.
+  The qualitative conclusion---$\eta h_{\max} > 2$ implies instability---is
+  expected to hold in the general (non-orthogonal) case by Furstenberg's theory
+  of random matrix products \cite{furstenberg1960products}, but rigorous
+  quantitative bounds in the non-commutative setting remain open
+  (see \Cref{sec:discussion}).  We present fully rigorous proofs under
+  \Cref{A:orth}, which has the virtue of yielding exact, closed-form Lyapunov
+  exponents.
+\end{remark}
+
+%% =================================================================
+\section{Main Results}\label{sec:main}
+%% =================================================================
+
+We state the results in logical order.  All proofs are deferred to \Cref{sec:proofs}.
+
+\begin{lemma}[Linearization of SGD near an interpolating solution]\label{lem:lin}
+  Let $\theta^* \in \cM$ and suppose \Cref{A:smooth} holds.
+  Define $\delta_t = \theta_t - \theta^*$.  When $\|\delta_t\| < r_0$,
+  \[
+    \delta_{t+1} = A_{z_t}\,\delta_t + R_{z_t}(\delta_t),
+  \]
+  where $A_i = I - \eta\,J_i J_i^\top$ and
+  $\|R_i(\delta)\| \leq C\eta\|\delta\|^2$ for a constant $C > 0$.
+\end{lemma}
+
+\begin{lemma}[Spectrum of the rank-one update]\label{lem:rank1}
+  The matrix $A_i = I - \eta J_i J_i^\top$ has eigenvalues:
+  \begin{itemize}
+    \item $1 - \eta h_i$, with eigenvector $J_i$;
+    \item $1$ with multiplicity $d-1$, corresponding to the eigenspace $J_i^\perp$.
+  \end{itemize}
+  The operator norm satisfies
+  $\|A_i\|_{\mathrm{op}} = \max(1, |1 - \eta h_i|)$.
+  In particular, $|1 - \eta h_i| \leq 1$ if and only if $0 \leq \eta h_i \leq 2$.
+\end{lemma}
+
+\begin{theorem}[Instability of bad interpolating solutions]\label{thm:instability}
+  Let $\theta^* \in \cM$ and suppose \Cref{A:smooth}--\Cref{A:orth} hold, with
+  $\eta\, h_{\max} > 2$.  Then the maximal Lyapunov exponent of the linearized SGD
+  at $\theta^*$ is
+  \[
+    \lambda(\eta, \theta^*) = \max_{k \in [n]} \frac{1}{n}\ln|1 - \eta h_k| > 0.
+  \]
+  Consequently, $\theta^*$ is \textbf{almost surely unstable} under SGD: for almost
+  every initial perturbation $\delta_0 \neq 0$ with nonzero component in $\cS$, the
+  linearized system satisfies $\|\delta_t\| \to \infty$.
+\end{theorem}
+
+\begin{theorem}[Stability of good interpolating solutions]\label{thm:stability}
+  Let $\theta^* \in \cM$ and suppose \Cref{A:smooth}--\Cref{A:orth} hold, with
+  $\eta\, h_{\max} < 2$.  Then all Lyapunov exponents are negative:
+  \[
+    \lambda_k = \frac{1}{n}\ln|1 - \eta h_k| < 0,
+    \quad \forall\, k \in [n].
+  \]
+  The solution $\theta^*$ is \textbf{almost surely asymptotically stable} under
+  linearized SGD: the active-subspace component decays exponentially,
+  \[
+    \|\delta_t|_{\cS}\| \leq \|\delta_0|_{\cS}\| \cdot
+    \exp\!\Bigl(\max_k \lambda_k \cdot t + o(t)\Bigr),
+  \]
+  while $P_{\cS^\perp}\delta_t = P_{\cS^\perp}\delta_0$ remains constant.
+\end{theorem}
+
+\begin{theorem}[Jacobian complexity controls Rademacher complexity]\label{thm:rad}
+  Let $\theta^* \in \cM$ and suppose \Cref{A:smooth} holds.  Define
+  \[
+    \cG_\rho = \bigl\{x \mapsto f_\theta(x) - f_{\theta^*}(x)
+    : \theta \in B(\theta^*, \rho)\bigr\}.
+  \]
+  Then the empirical Rademacher complexity satisfies
+  \begin{equation}\label{eq:rad}
+    \hat{\mathcal{R}}_S(\cG_\rho)
+    \leq \frac{\rho\,\cC(\theta^*)}{\sqrt{n}} + \frac{B_2\,\rho^2}{2}.
+  \end{equation}
+\end{theorem}
+
+\begin{theorem}[Generalization bound]\label{thm:gen}
+  Let $\theta^* \in \cM$ and suppose \Cref{A:smooth} holds.
+  Suppose the loss $\ell(\hat{y}, y)$ is $L_\ell$-Lipschitz in its first argument
+  and takes values in $[0, \bar{\ell}]$.
+  Then with probability at least $1 - \delta$ over the draw of $S$:
+  \begin{equation}\label{eq:gen}
+    L_{\mathrm{pop}}(\theta^*)
+    \leq \underbrace{L(\theta^*)}_{=\,0}
+    + \frac{2 L_\ell\,\rho\,\cC(\theta^*)}{\sqrt{n}}
+    + L_\ell\, B_2\,\rho^2
+    + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+  \end{equation}
+\end{theorem}
+
+\begin{theorem}[Closed-loop implicit regularization---Main Theorem]\label{thm:main}
+  Let \Cref{A:smooth}--\Cref{A:orth} hold and $\cM \neq \varnothing$.
+  Define $\cM_\eta = \{\theta^* \in \cM : h_{\max}(\theta^*) < 2/\eta\}$.
+  Consider SGD with learning rate $\eta$.
+  \begin{enumerate}[label=\textbf{(\Roman*)}]
+    \item \textbf{Selection.}\;
+      For every interpolating solution in $\cM \setminus \cM_\eta$
+      (i.e., with $\eta h_{\max} > 2$),
+      the maximal Lyapunov exponent of the \emph{linearized} SGD satisfies
+      $\lambda = \frac{1}{n}\ln(\eta h_{\max} - 1) > 0$,
+      so these solutions are almost surely unstable under linearized SGD.
+      Conversely, for solutions in $\cM_\eta$ (with $\eta h_{\max} < 2$),
+      all Lyapunov exponents in $\cS$ are negative and the $\cS$-direction
+      perturbation decays exponentially under linearized SGD.
+      The boundary case $\eta h_{\max} = 2$ is degenerate
+      ($\lambda = 0$) and is excluded from both sets.
+
+    \item \textbf{Complexity control.}\;
+      Every solution in $\cM_\eta$ satisfies $h_i \leq 2/\eta$ for all $i$, hence
+      \[
+        \cC(\theta^*)^2 = \frac{1}{n}\sum_{i=1}^n h_i
+        \leq h_{\max} < \frac{2}{\eta}.
+      \]
+
+    \item \textbf{Generalization.}\;
+      With probability at least $1 - \delta$, any SGD-selected solution
+      $\theta^* \in \cM_\eta$ satisfies
+      \[
+        L_{\mathrm{pop}}(\theta^*)
+        \leq \frac{2\sqrt{2}\, L_\ell\,\rho}{\sqrt{\eta\, n}}
+        + L_\ell\, B_2\,\rho^2
+        + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+      \]
+
+    \item \textbf{Monotonicity.}\;
+      $\eta_1 < \eta_2 \;\Rightarrow\; \cM_{\eta_2} \subseteq \cM_{\eta_1}
+      \;\Rightarrow\; \sup_{\cM_{\eta_2}} \cC \leq \sup_{\cM_{\eta_1}} \cC$.
+      Increasing $\eta$ tightens the generalization bound.
+  \end{enumerate}
+\end{theorem}
+
+\begin{theorem}[PAC-Bayes bound]\label{thm:pb}
+  Let $\theta^* \in \cM$ and suppose \Cref{A:smooth} holds.
+  Let the prior be $P = \mathcal{N}(0, \sigma_0^2 I_d)$ and the posterior be
+  $Q = \mathcal{N}(\theta^*, \sigma^2 I_d)$.
+  Suppose $\ell(\hat{y}, y) = \frac{1}{2}(\hat{y} - y)^2 \in [0, \bar{\ell}]$.
+  Then with probability at least $1 - \delta$:
+  \begin{equation}\label{eq:pb}
+    \E_{\theta \sim Q}\bigl[L_{\mathrm{pop}}(\theta)\bigr]
+    \leq \frac{\sigma^2\,\cC(\theta^*)^2}{2} + O(\sigma^4)
+    + \sqrt{
+      \frac{
+        \frac{d}{2}\!\left(\frac{\sigma^2}{\sigma_0^2} - 1
+        - \ln\frac{\sigma^2}{\sigma_0^2}\right)
+        + \frac{\|\theta^*\|^2}{2\sigma_0^2}
+        + \ln\frac{2\sqrt{n}}{\delta}
+      }{2n}
+    }.
+  \end{equation}
+\end{theorem}
+
+\begin{corollary}[PAC-Bayes bound for SGD-selected solutions]\label{cor:pb}
+  Suppose SGD selects $\theta^* \in \cM_\eta$, so that
+  $\cC(\theta^*)^2 \leq 2/\eta$.  Set $\sigma^2 = \alpha\eta$ for a constant
+  $\alpha > 0$.  Then:
+  \[
+    \E_{\theta \sim Q}[L_{\mathrm{pop}}(\theta)]
+    \leq \alpha + O(\eta^2)
+    + \sqrt{
+      \frac{
+        \frac{d}{2}\!\left(\frac{\alpha\eta}{\sigma_0^2} - 1
+        - \ln\frac{\alpha\eta}{\sigma_0^2}\right)
+        + \frac{\|\theta^*\|^2}{2\sigma_0^2}
+        + \ln\frac{2\sqrt{n}}{\delta}
+      }{2n}
+    }.
+  \]
+  In particular, when $\alpha\eta \ll \sigma_0^2$ the KL term is dominated by
+  $\frac{d}{2}\ln\frac{\sigma_0^2}{\alpha\eta}$, and the bound scales as
+  $O\bigl(\sqrt{d\,\ln(1/\eta)\,/\,n}\bigr)$.
+\end{corollary}
+
+%% =================================================================
+\section{Proofs}\label{sec:proofs}
+%% =================================================================
+
+\subsection{Proof of Lemma~\ref{lem:lin} (Linearization)}
+
+\begin{proof}
+\textbf{Step~1 (Residual expansion).}\;
+At $\theta^*$, the residual is $r_i(\theta^*) = f_{\theta^*}(x_i) - y_i = 0$
+by the interpolation condition.  By Taylor expansion around $\theta^*$:
+\[
+  r_i(\theta^* + \delta)
+  = \underbrace{r_i(\theta^*)}_{=\,0} + J_i^\top \delta + O(\|\delta\|^2)
+  = J_i^\top \delta + O(\|\delta\|^2).
+\]
+
+\textbf{Step~2 (Jacobian expansion).}\;
+Similarly,
+\[
+  \nabla_\theta f_{\theta^* + \delta}(x_i)
+  = J_i + \nabla^2_\theta f_{\theta^*}(x_i)\,\delta + O(\|\delta\|^2)
+  = J_i + O(\|\delta\|).
+\]
+
+\textbf{Step~3 (Loss gradient expansion).}\;
+Since $\nabla\ell_i(\theta) = r_i(\theta) \cdot \nabla_\theta f_\theta(x_i)$,
+we have
+\begin{align*}
+  \nabla\ell_i(\theta^* + \delta)
+  &= \bigl(J_i^\top \delta + O(\|\delta\|^2)\bigr)
+     \bigl(J_i + O(\|\delta\|)\bigr) \\
+  &= J_i(J_i^\top \delta) + O(\|\delta\|^2) \\
+  &= J_i J_i^\top \delta + O(\|\delta\|^2) \\
+  &= H_i\,\delta + O(\|\delta\|^2).
+\end{align*}
+For the $O(\|\delta\|^2)$ remainder: the cross terms are
+$(J_i^\top \delta) \cdot \nabla^2_\theta f_{\theta^*}(x_i)\,\delta$
+(of magnitude $\sqrt{h_i}\,\|\delta\| \cdot B_2\,\|\delta\|$)
+and
+$\frac{1}{2}(\delta^\top \nabla^2_\theta f_{\theta^*}(x_i)\,\delta) \cdot J_i$
+(of magnitude $\frac{B_2}{2}\|\delta\|^2\sqrt{h_i}$),
+plus higher-order terms.  Therefore
+$\|\nabla\ell_i(\theta^* + \delta) - H_i\,\delta\| \leq C_1\|\delta\|^2$
+where $C_1 = B_2\bigl(\sqrt{h_{\max}} + \frac{B_2}{2}\sqrt{h_{\max}}\bigr)$.
+
+\textbf{Step~4 (SGD update).}\;
+\begin{align*}
+  \delta_{t+1}
+  &= \delta_t - \eta\,\nabla\ell_{z_t}(\theta^* + \delta_t) \\
+  &= \delta_t - \eta\,H_{z_t}\,\delta_t - \eta \cdot O(\|\delta_t\|^2) \\
+  &= (I - \eta\,H_{z_t})\,\delta_t + R_{z_t}(\delta_t),
+\end{align*}
+where $\|R_i(\delta)\| \leq \eta\, C_1\,\|\delta\|^2$.  Setting $C = C_1$
+completes the proof.
+\end{proof}
+
+\subsection{Proof of Lemma~\ref{lem:rank1} (Rank-one spectrum)}
+
+\begin{proof}
+\textbf{Action on $J_i$:}\;
+$A_i\, J_i = (I - \eta\, J_i J_i^\top)\, J_i
+= J_i - \eta\,\|J_i\|^2\, J_i = (1 - \eta h_i)\, J_i$.
+
+\textbf{Action on $u \perp J_i$:}\;
+$A_i\, u = (I - \eta\, J_i J_i^\top)\, u = u - \eta\,(J_i^\top u)\, J_i = u$.
+
+Thus the eigenvalues are $1 - \eta h_i$ (eigenvector $J_i$) and $1$ with
+multiplicity $d - 1$ (eigenspace $J_i^\perp$).
+
+The operator norm is
+$\|A_i\|_{\mathrm{op}} = \max(|1 - \eta h_i|, 1)$.
+
+Finally,
+$|1 - \eta h_i| \leq 1
+\;\Leftrightarrow\; -1 \leq 1 - \eta h_i \leq 1
+\;\Leftrightarrow\; 0 \leq \eta h_i \leq 2$.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:instability} (Instability)}
+
+\begin{proof}
+\textbf{Step~1 (Coordinate decoupling under orthogonality).}\;
+By \Cref{A:orth}, $J_i^\top J_j = 0$ for $i \neq j$.
+Construct an orthonormal basis of $\cS$:
+\[
+  e_k = \frac{J_k}{\sqrt{h_k}}, \quad k = 1, \ldots, n.
+\]
+Then $e_k^\top e_l = \frac{J_k^\top J_l}{\sqrt{h_k\, h_l}} = \delta_{kl}$.
+
+\textbf{Step~2 (Matrix representation of $A_i$ on $\cS$).}\;
+The $(k, l)$-entry of $A_i$ restricted to $\cS$ in the basis $\{e_k\}$ is
+\begin{align*}
+  (\hat{A}_i)_{kl}
+  &= e_k^\top A_i\, e_l
+  = e_k^\top(I - \eta\, J_i J_i^\top)\, e_l
+  = \delta_{kl} - \eta\,(e_k^\top J_i)(J_i^\top e_l).
+\end{align*}
+By orthogonality, $e_k^\top J_i = \frac{J_k^\top J_i}{\sqrt{h_k}}
+= \sqrt{h_i}\,\delta_{ki}$.  Therefore
+\[
+  (\hat{A}_i)_{kl} = \delta_{kl} - \eta\, h_i\,\delta_{ki}\,\delta_{li}.
+\]
+This means $\hat{A}_i$ is a \textbf{diagonal matrix}:
+\[
+  (\hat{A}_i)_{kk} =
+  \begin{cases}
+    1 - \eta h_i, & k = i, \\
+    1, & k \neq i.
+  \end{cases}
+\]
+
+\textbf{Step~3 (Coordinate evolution).}\;
+Let $\xi_t \in \R^n$ denote the coordinates of $\delta_t|_{\cS}$ in the basis
+$\{e_k\}$: $(\xi_t)_k = e_k^\top \delta_t$.  By the diagonal structure of
+$\hat{A}_i$:
+\[
+  (\xi_{t+1})_k = (\hat{A}_{z_t})_{kk} \cdot (\xi_t)_k
+  = \begin{cases}
+    (1 - \eta h_k)(\xi_t)_k, & z_t = k, \\
+    (\xi_t)_k, & z_t \neq k.
+  \end{cases}
+\]
+Each coordinate $k$ evolves \textbf{independently}: there is no coupling between
+different coordinates.
+
+\textbf{Step~4 (Product representation).}\;
+\[
+  (\xi_T)_k = (\xi_0)_k \cdot \prod_{t=1}^{T} (\hat{A}_{z_t})_{kk}.
+\]
+Taking logarithms:
+\[
+  \ln|(\xi_T)_k| = \ln|(\xi_0)_k| + \sum_{t=1}^{T} X_t^{(k)},
+\]
+where $X_t^{(k)} = \ln|(\hat{A}_{z_t})_{kk}|$.
+
+\textbf{Step~5 (Distribution of $X_t^{(k)}$).}\;
+Since $z_t \sim \mathrm{Uniform}([n])$:
+\[
+  X_t^{(k)} =
+  \begin{cases}
+    \ln|1 - \eta h_k|, & \text{with probability } 1/n, \\
+    0, & \text{with probability } (n-1)/n.
+  \end{cases}
+\]
+The mean is
+$\E[X_t^{(k)}] = \frac{1}{n}\ln|1 - \eta h_k| \triangleq \lambda_k$.
+
+The variance is
+$\mathrm{Var}(X_t^{(k)})
+= \frac{1}{n}(\ln|1 - \eta h_k|)^2 - \frac{1}{n^2}(\ln|1 - \eta h_k|)^2
+= \frac{n-1}{n^2}(\ln|1 - \eta h_k|)^2 < \infty$.
+
+\textbf{Step~6 (Strong law of large numbers).}\;
+The sequence $\{X_t^{(k)}\}_{t \geq 1}$ is i.i.d.\ (since $z_1, z_2, \ldots$
+are i.i.d.) with finite mean and variance.
+By the Kolmogorov strong law of large numbers:
+\[
+  \frac{1}{T}\sum_{t=1}^{T} X_t^{(k)}
+  \xrightarrow{T \to \infty} \lambda_k
+  = \frac{1}{n}\ln|1 - \eta h_k|
+  \quad \text{almost surely.}
+\]
+Hence
+\[
+  \frac{1}{T}\ln|(\xi_T)_k| \to \lambda_k
+  \quad \text{almost surely.}
+\]
+
+\textbf{Step~7 (Sign of the Lyapunov exponent).}\;
+
+\emph{Case 1:} $\eta h_k < 2$.
+Then $|1 - \eta h_k| < 1$, so $\ln|1 - \eta h_k| < 0$ and $\lambda_k < 0$.
+
+\emph{Case 2:} $\eta h_k > 2$.
+Then $|1 - \eta h_k| = \eta h_k - 1 > 1$, so $\ln|1 - \eta h_k| > 0$ and
+$\lambda_k > 0$.
+
+\textbf{Step~8 (Instability conclusion).}\;
+Let $k^* = \arg\max_k h_k$.  By hypothesis,
+$\eta h_{k^*} = \eta h_{\max} > 2$, so $\lambda_{k^*} > 0$.
+Provided $(\xi_0)_{k^*} \neq 0$ (i.e., the initial perturbation has a nonzero
+component in the $J_{k^*}$ direction),
+\[
+  |(\xi_T)_{k^*}|
+  = |(\xi_0)_{k^*}| \cdot \exp\!\bigl(\lambda_{k^*} \cdot T + o(T)\bigr)
+  \to \infty
+  \quad \text{almost surely.}
+\]
+Therefore $\|\delta_T\| \geq |(\xi_T)_{k^*}| \to \infty$, and $\theta^*$ is
+almost surely unstable under the linearized SGD.
+
+\textbf{Step~9 (Maximal Lyapunov exponent).}\;
+The maximal Lyapunov exponent of the system on $\cS$ is
+\[
+  \lambda = \max_{k \in [n]} \lambda_k
+  = \max_k \frac{1}{n}\ln|1 - \eta h_k|
+  \geq \lambda_{k^*}
+  = \frac{1}{n}\ln(\eta h_{\max} - 1) > 0. \qedhere
+\]
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:stability} (Stability)}
+
+\begin{proof}
+All steps follow the same structure as the proof of \Cref{thm:instability}, with the
+sign reversed.
+
+\textbf{Steps 1--6:}\;
+Identical to Steps~1--6 in the proof of \Cref{thm:instability}.  We obtain the
+per-coordinate Lyapunov exponent
+$\lambda_k = \frac{1}{n}\ln|1 - \eta h_k|$ for each $k \in [n]$.
+
+\textbf{Step~7 (All exponents are negative).}\;
+By hypothesis, $\eta h_k \leq \eta h_{\max} < 2$ for all $k$.  By \Cref{lem:rank1},
+$|1 - \eta h_k| < 1$ for every $k$, so $\lambda_k < 0$ for all $k \in [n]$.
+
+\textbf{Step~8 (Asymptotic stability).}\;
+Since $\frac{1}{T}\ln|(\xi_T)_k| \to \lambda_k < 0$ almost surely (by Step~6),
+we have $|(\xi_T)_k| \to 0$ for every $k$.  Therefore
+\[
+  \|\delta_T|_{\cS}\| = \sqrt{\sum_{k=1}^n (\xi_T)_k^2} \to 0
+  \quad \text{almost surely.}
+\]
+The decay rate is governed by the slowest coordinate:
+$\lambda_{\max} = \max_k \lambda_k < 0$, so
+\[
+  \|\delta_T|_{\cS}\| \leq \|\delta_0|_{\cS}\| \cdot
+  \exp(\lambda_{\max}\, T + o(T)).
+\]
+
+\textbf{Behavior in $\cS^\perp$.}\;
+For any $v \in \cS^\perp$, $A_i\, v = v$ by \Cref{lem:rank1} (since
+$v \perp J_i$ for all $i$).  Therefore
+$P_{\cS^\perp}\delta_t = P_{\cS^\perp}\delta_0$, which remains constant.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:rad} (Rademacher bound)}
+
+\begin{proof}
+\textbf{Step~1 (Taylor expansion).}\;
+For $\theta = \theta^* + \delta$ with $\|\delta\| \leq \rho$:
+\[
+  f_\theta(x_i) - f_{\theta^*}(x_i) = J_i^\top \delta + r_i(\delta),
+\]
+where $r_i(\delta) = \frac{1}{2}\delta^\top \nabla^2_\theta f_{\tilde{\theta}}(x_i)
+\,\delta$ for some $\tilde{\theta}$ on the segment $[\theta^*, \theta]$, by Taylor's
+theorem with Lagrange remainder.  By \Cref{A:smooth},
+$|r_i(\delta)| \leq \frac{B_2}{2}\|\delta\|^2 \leq \frac{B_2\,\rho^2}{2}$.
+
+\textbf{Step~2 (Rademacher decomposition).}\;
+Let $\sigma_1, \ldots, \sigma_n$ be i.i.d.\ Rademacher random variables.
+\begin{align*}
+  \hat{\mathcal{R}}_S(\cG_\rho)
+  &= \E_\sigma\!\left[
+    \sup_{\|\delta\| \leq \rho} \frac{1}{n}\sum_{i=1}^n
+    \sigma_i\bigl(J_i^\top \delta + r_i(\delta)\bigr)
+  \right] \\
+  &\leq \E_\sigma\!\left[
+    \sup_{\|\delta\| \leq \rho} \frac{1}{n}\sum_{i=1}^n \sigma_i\, J_i^\top \delta
+  \right]
+  + \frac{B_2\,\rho^2}{2}.
+\end{align*}
+The second inequality holds because
+$\sup_{\|\delta\| \leq \rho} \frac{1}{n}\sum_i \sigma_i\bigl(J_i^\top \delta
++ r_i(\delta)\bigr)
+\leq \sup_{\|\delta\| \leq \rho} \frac{1}{n}\sum_i \sigma_i\, J_i^\top \delta
++ \sup_{\|\delta\| \leq \rho} \frac{1}{n}\sum_i |\sigma_i\, r_i(\delta)|
+\leq \sup_{\|\delta\| \leq \rho} \frac{1}{n}\sum_i \sigma_i\, J_i^\top \delta
++ \frac{B_2\,\rho^2}{2}$,
+where the last term is deterministic since $|r_i(\delta)| \leq \frac{B_2\rho^2}{2}$
+regardless of $\sigma$.
+
+\textbf{Step~3 (Linear part computation).}\;
+\begin{align*}
+  \sup_{\|\delta\| \leq \rho}
+  \frac{1}{n}\sum_{i=1}^n \sigma_i\, J_i^\top \delta
+  &= \sup_{\|\delta\| \leq \rho}
+     \frac{1}{n}\!\left(\sum_{i=1}^n \sigma_i\, J_i\right)^{\!\top} \delta
+  = \frac{\rho}{n}\left\|\sum_{i=1}^n \sigma_i\, J_i\right\|.
+\end{align*}
+The last equality follows from $\sup_{\|\delta\| \leq \rho} v^\top \delta
+= \rho\,\|v\|$, attained at $\delta^* = \rho\, v/\|v\|$.
+
+\textbf{Step~4 (Expectation estimate via Jensen's inequality).}\;
+Since $\sqrt{\cdot}$ is concave, by Jensen's inequality:
+\[
+  \E_\sigma\!\left[\left\|\sum_{i=1}^n \sigma_i\, J_i\right\|\right]
+  \leq \sqrt{\E_\sigma\!\left[\left\|\sum_{i=1}^n \sigma_i\, J_i\right\|^2\right]}.
+\]
+Expanding the squared norm:
+\begin{align*}
+  \E_\sigma\!\left[\left\|\sum_{i=1}^n \sigma_i\, J_i\right\|^2\right]
+  &= \E_\sigma\!\left[\sum_{i=1}^n \sum_{j=1}^n
+     \sigma_i\, \sigma_j\, J_i^\top J_j\right]
+  = \sum_{i=1}^n \sum_{j=1}^n \E[\sigma_i\, \sigma_j] \cdot J_i^\top J_j.
+\end{align*}
+Since $\sigma_i$ are i.i.d.\ Rademacher:
+$\E[\sigma_i\,\sigma_j] = \delta_{ij}$
+(because $\E[\sigma_i^2] = 1$ and
+$\E[\sigma_i\,\sigma_j] = \E[\sigma_i]\,\E[\sigma_j] = 0$ for $i \neq j$).
+Therefore
+\[
+  \E_\sigma\!\left[\left\|\sum_{i=1}^n \sigma_i\, J_i\right\|^2\right]
+  = \sum_{i=1}^n \|J_i\|^2 = \sum_{i=1}^n h_i = n\,\cC(\theta^*)^2.
+\]
+Hence $\E_\sigma\!\bigl[\|\sum_i \sigma_i\, J_i\|\bigr]
+\leq \sqrt{n}\,\cC(\theta^*)$.
+
+\textbf{Step~5 (Combining).}\;
+\[
+  \hat{\mathcal{R}}_S(\cG_\rho)
+  \leq \frac{\rho}{n} \cdot \sqrt{n}\,\cC(\theta^*)
+  + \frac{B_2\,\rho^2}{2}
+  = \frac{\rho\,\cC(\theta^*)}{\sqrt{n}} + \frac{B_2\,\rho^2}{2}.
+  \qedhere
+\]
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:gen} (Generalization bound)}
+
+\begin{proof}
+\textbf{Step~1 (Zero training loss).}\;
+Since $\theta^* \in \cM$, we have $f_{\theta^*}(x_i) = y_i$ for all $i$,
+so $L(\theta^*) = 0$.
+
+\textbf{Step~2 (Standard Rademacher generalization bound).}\;
+Define the function class
+$\cH = \{(x,y) \mapsto \ell(f_\theta(x), y) : \theta \in B(\theta^*, \rho)\}$.
+By the standard uniform convergence result (Mohri, Rostamizadeh, and Talwalkar,
+Theorem~3.1), with probability at least $1 - \delta$ over the draw of $S$:
+\[
+  \sup_{\theta \in B(\theta^*, \rho)}
+  \bigl|L_{\mathrm{pop}}(\theta) - L(\theta)\bigr|
+  \leq 2\,\hat{\mathcal{R}}_S(\cH)
+  + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+\]
+
+\textbf{Step~3 (Lipschitz contraction).}\;
+By the Ledoux--Talagrand contraction lemma, the $L_\ell$-Lipschitz property of
+$\ell$ in its first argument implies
+\[
+  \hat{\mathcal{R}}_S(\cH) \leq L_\ell\,\hat{\mathcal{R}}_S(\cF_\rho),
+\]
+where $\cF_\rho = \{x \mapsto f_\theta(x) : \theta \in B(\theta^*, \rho)\}$.
+Adding and subtracting the constant $f_{\theta^*}$ does not affect the Rademacher
+complexity (since $\E_\sigma[\sum_i \sigma_i\, c] = 0$ for any constant $c$),
+so $\hat{\mathcal{R}}_S(\cF_\rho) = \hat{\mathcal{R}}_S(\cG_\rho)$.
+
+\textbf{Step~4 (Substituting \Cref{thm:rad}).}\;
+\begin{align*}
+  L_{\mathrm{pop}}(\theta^*)
+  &\leq L(\theta^*)
+  + 2\,L_\ell\,\hat{\mathcal{R}}_S(\cG_\rho)
+  + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}} \\
+  &\leq 0
+  + 2\,L_\ell\!\left(
+    \frac{\rho\,\cC(\theta^*)}{\sqrt{n}} + \frac{B_2\,\rho^2}{2}
+  \right)
+  + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}} \\
+  &= \frac{2\,L_\ell\,\rho\,\cC(\theta^*)}{\sqrt{n}}
+  + L_\ell\, B_2\,\rho^2
+  + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+  \qedhere
+\end{align*}
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:main} (Main Theorem---Closed-loop implicit regularization)}
+
+\begin{proof}
+\textbf{Part (I): Selection.}\;
+This follows directly from \Cref{thm:instability} and \Cref{thm:stability}.
+For $\theta^* \in \cM \setminus \cM_\eta$, we have $h_{\max}(\theta^*) \geq 2/\eta$,
+so $\eta h_{\max} \geq 2$.  When $\eta h_{\max} > 2$, by \Cref{thm:instability}
+the maximal Lyapunov exponent is
+$\lambda \geq \frac{1}{n}\ln(\eta h_{\max} - 1) > 0$,
+and SGD escapes almost surely.
+For $\theta^* \in \cM_\eta$, we have $\eta h_{\max} < 2$, and by
+\Cref{thm:stability} all Lyapunov exponents are negative and the $\cS$-direction
+perturbation decays exponentially.
+
+\textbf{Part (II): Complexity control.}\;
+For $\theta^* \in \cM_\eta$, by definition $h_i \leq h_{\max} < 2/\eta$ for
+every $i \in [n]$.  Therefore
+\[
+  \cC(\theta^*)^2 = \frac{1}{n}\sum_{i=1}^n h_i
+  \leq h_{\max} < \frac{2}{\eta}.
+\]
+
+\textbf{Part (III): Generalization.}\;
+Substituting $\cC(\theta^*) \leq \sqrt{2/\eta}$ into \eqref{eq:gen}:
+\[
+  L_{\mathrm{pop}}(\theta^*)
+  \leq \frac{2\,L_\ell\,\rho\,\sqrt{2/\eta}}{\sqrt{n}}
+  + L_\ell\, B_2\,\rho^2
+  + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}
+  = \frac{2\sqrt{2}\,L_\ell\,\rho}{\sqrt{\eta\, n}}
+  + L_\ell\, B_2\,\rho^2
+  + \bar{\ell}\sqrt{\frac{\ln(2/\delta)}{2n}}.
+\]
+
+\textbf{Part (IV): Monotonicity.}\;
+By definition, $\cM_\eta = \{\theta^* \in \cM : h_{\max} < 2/\eta\}$.
+When $\eta$ increases, $2/\eta$ decreases, making the threshold stricter.
+Hence $\eta_1 < \eta_2$ implies $\cM_{\eta_2} \subseteq \cM_{\eta_1}$.
+Consequently,
+$\sup_{\theta^* \in \cM_{\eta_2}} \cC(\theta^*)
+\leq \sup_{\theta^* \in \cM_{\eta_1}} \cC(\theta^*)$.
+Moreover, $\sup_{\cM_\eta} \cC \leq \sqrt{2/\eta}$ is monotonically decreasing
+in $\eta$.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:pb} (PAC-Bayes bound)}
+
+\begin{proof}
+\textbf{Step~1 (PAC-Bayes inequality).}\;
+By the standard PAC-Bayes theorem (McAllester 1999; Catoni 2007), with
+probability at least $1 - \delta$ over the draw of $S$:
+\[
+  \E_{\theta \sim Q}[L_{\mathrm{pop}}(\theta)]
+  \leq \E_{\theta \sim Q}[L(\theta)]
+  + \sqrt{\frac{\KL(Q \| P) + \ln(2\sqrt{n}/\delta)}{2n}}.
+\]
+
+\textbf{Step~2 (Computing $\E_Q[L]$).}\;
+Write $\theta = \theta^* + \epsilon$ where $\epsilon \sim \mathcal{N}(0, \sigma^2 I)$.
+By Taylor expansion at $\theta^*$:
+\[
+  f_\theta(x_i) - y_i
+  = J_i^\top \epsilon
+  + \tfrac{1}{2}\epsilon^\top \nabla^2_\theta f_{\theta^*}(x_i)\,\epsilon
+  + O(\|\epsilon\|^3).
+\]
+Squaring:
+\[
+  (f_\theta(x_i) - y_i)^2
+  = (J_i^\top \epsilon)^2
+  + 2(J_i^\top \epsilon) \cdot \tfrac{1}{2}\epsilon^\top \nabla^2_\theta f_{\theta^*}(x_i)\,\epsilon
+  + O(\|\epsilon\|^4).
+\]
+
+For the cross term:
+$\E\!\bigl[(J_i^\top \epsilon) \cdot \epsilon^\top \nabla^2 f_{\theta^*}(x_i)\,\epsilon\bigr]
+= \sum_{a,b,c} (J_i)_a\,(\nabla^2 f)_{bc}\,\E[\epsilon_a\,\epsilon_b\,\epsilon_c] = 0$,
+since all odd moments of the Gaussian distribution vanish.
+
+For the leading term:
+$\E[(J_i^\top \epsilon)^2] = \sigma^2\,\|J_i\|^2 = \sigma^2\, h_i$.
+
+Therefore
+$\E[\ell_i(\theta)] = \frac{\sigma^2\, h_i}{2} + O(\sigma^4)$,
+and
+\[
+  \E_Q[L]
+  = \frac{\sigma^2}{2n}\sum_{i=1}^n h_i + O(\sigma^4)
+  = \frac{\sigma^2\,\cC(\theta^*)^2}{2} + O(\sigma^4).
+\]
+
+\textbf{Step~3 (KL divergence).}\;
+The KL divergence between two Gaussians is given by the standard formula:
+\begin{align*}
+  \KL\!\bigl(\mathcal{N}(\theta^*, \sigma^2 I) \,\|\,
+  \mathcal{N}(0, \sigma_0^2 I)\bigr)
+  &= \frac{d}{2}\!\left(\frac{\sigma^2}{\sigma_0^2}
+  - 1 - \ln\frac{\sigma^2}{\sigma_0^2}\right)
+  + \frac{\|\theta^*\|^2}{2\sigma_0^2}.
+\end{align*}
+
+\textbf{Step~4 (Assembly).}\;
+Substituting Steps~2 and~3 into the PAC-Bayes inequality of Step~1 yields
+\eqref{eq:pb}.
+\end{proof}
+
+\subsection{Proof of Corollary~\ref{cor:pb} (PAC-Bayes for SGD-selected solutions)}
+
+\begin{proof}
+By \Cref{thm:main}~(II), $\cC(\theta^*)^2 \leq 2/\eta$ for any
+$\theta^* \in \cM_\eta$.  Setting $\sigma^2 = \alpha\eta$ in \Cref{thm:pb}:
+\[
+  \E_Q[L]
+  = \frac{\alpha\eta}{2}\,\cC(\theta^*)^2 + O(\alpha^2 \eta^2)
+  \leq \frac{\alpha\eta}{2} \cdot \frac{2}{\eta} + O(\eta^2)
+  = \alpha + O(\eta^2).
+\]
+The KL term becomes
+$\frac{d}{2}\!\left(\frac{\alpha\eta}{\sigma_0^2} - 1
+- \ln\frac{\alpha\eta}{\sigma_0^2}\right) + \frac{\|\theta^*\|^2}{2\sigma_0^2}$.
+When $\alpha\eta \ll \sigma_0^2$, we have
+$\frac{\alpha\eta}{\sigma_0^2} \approx 0$ and
+$-\ln\frac{\alpha\eta}{\sigma_0^2} = \ln\frac{\sigma_0^2}{\alpha\eta} \gg 1$,
+so the KL term is dominated by $\frac{d}{2}\ln\frac{\sigma_0^2}{\alpha\eta}$.
+The full bound then scales as
+$\alpha + O(\eta^2) + O\!\left(\sqrt{\frac{d\,\ln(1/\eta)}{n}}\right)$.
+\end{proof}
+
+%% =================================================================
+\section{Reparameterization Invariance}\label{sec:reparam}
+%% =================================================================
+
+\begin{remark}[Reparameterization invariance of $\Sigma/H$]\label{rem:reparam}
+  The ratio $\Sigma/H$ (and the interpolation-regime analogue $\cC^2/h_{\max}$)
+  is invariant under smooth reparameterization.  This distinguishes our complexity
+  measure from flatness (small $H$) or small noise ($\Sigma$) individually, both of
+  which can be altered by reparameterization without changing the function
+  \cite{Dinh2017}.
+
+  \textbf{Proof.}\;
+  Let $\theta = g(\varphi)$ be a smooth bijection with $\varphi^* = g^{-1}(\theta^*)$.
+  In the new parameterization:
+  \[
+    \tilde{H} = L''(g(\varphi^*)) \cdot [g'(\varphi^*)]^2 = H \cdot (g')^2,
+  \]
+  \[
+    \tilde{\Sigma}
+    = \E_i\!\bigl[(\ell_i'(g(\varphi^*)))^2\bigr] \cdot [g'(\varphi^*)]^2
+    = \Sigma \cdot (g')^2.
+  \]
+  Therefore $\tilde{\Sigma}/\tilde{H} = \Sigma \cdot (g')^2 / (H \cdot (g')^2)
+  = \Sigma / H$.
+
+  In the multivariate case, $\tr(H^{-1}\Sigma)$ is similarly invariant: the Jacobian
+  factors from the change of variables cancel in the product $H^{-1}\Sigma$.
+
+  \textbf{Implication.}\;
+  The generalization gap $\approx \Sigma/(H(n-1))$ in the non-interpolation regime is
+  an intrinsic geometric quantity.  In the interpolation regime, the per-sample
+  curvature condition $h_{\max} < 2/\eta$ is coordinate-dependent (since $h_i$ involves
+  the parameter-space norm of $J_i$), but the \emph{stability criterion} (whether
+  the Lyapunov exponent is positive or negative) is invariant: a reparameterization
+  that changes $h_i$ also changes the effective learning rate in the new coordinates,
+  preserving the sign of $\lambda_k$.
+\end{remark}
+
+%% =================================================================
+\section{Discussion}\label{sec:discussion}
+%% =================================================================
+
+\subsection{Connection to the non-interpolation regime}\label{ssec:non-interp}
+
+In the non-interpolation regime ($L(\theta^*) > 0$), the gradient noise
+$\Sigma(\theta^*) > 0$ enables an SDE approximation whose Fokker--Planck
+stationary distribution $p \propto (1/\Sigma)\exp(-2V_{\mathrm{eff}}/\tau)$
+biases SGD toward minima with low $\Sigma$.  At interpolation
+($L(\theta^*) = 0$), $\Sigma = 0$ and the SDE degenerates; the
+regularization mechanism shifts from first-order noise to the second-order
+structure $H_i = J_i J_i^\top$ analyzed in this paper.  Both mechanisms
+reflect per-sample sensitivity of $f_\theta$, but through different
+mathematical tools (continuous SDE vs.\ discrete random matrix products).
+
+\subsection{Testable predictions}
+
+\begin{corollary}[Testable predictions from the theory]\label{cor:testable}
+  Under the assumptions of \Cref{thm:main}:
+  \begin{enumerate}[label=(G\arabic*)]
+    \item \label{pred:hmax}
+      \textbf{$h_{\max}$ predicts generalization.}\;
+      After training to interpolation, measure
+      $h_{\max} = \max_i \|\nabla_\theta f_{\theta^*}(x_i)\|^2$.
+      Models trained with different $\eta$ should exhibit a positive correlation
+      between $h_{\max}$ and test error, stronger than the correlation with
+      $\tr(H)$ or other flatness measures.
+
+    \item \label{pred:phase}
+      \textbf{Critical phase transition.}\;
+      For a fixed model, training loss should transition sharply from zero to nonzero
+      at $\eta \approx 2/h_{\max}$.
+
+    \item \label{pred:eta-mono}
+      \textbf{Monotone effect of $\eta$.}\;
+      In the interpolation regime, increasing $\eta$ should monotonically decrease
+      $\cC = \|\bJ\|_F/\sqrt{n}$ (up to the point where SGD fails to converge).
+  \end{enumerate}
+\end{corollary}
+
+\begin{conjecture}[Beyond the orthogonality assumption]\label{conj:beyond}
+  \begin{enumerate}[label=(G\arabic*)]
+    \setcounter{enumi}{2}
+    \item \label{pred:noise-struct}
+      \textbf{Noise structure matters more than magnitude.}\;
+      Replacing SGD noise with isotropic Gaussian noise of the same magnitude should
+      degrade generalization performance, because the structured per-sample filtering
+      mechanism (which depends on the alignment of $J_i$ directions) is destroyed.
+
+    \item \label{pred:F4}
+      \textbf{F4 observability.}\;
+      In small-data, large-model settings, overfitting solutions may have
+      \emph{lower} $\Sigma$ than generalizing solutions, because memorization can
+      lead to aligned per-sample gradients.
+  \end{enumerate}
+\end{conjecture}
+
+\subsection{Limitations}
+
+We discuss the main limitations of the present analysis.
+
+\paragraph{Jacobian orthogonality (\Cref{A:orth}).}
+The complete decoupling of coordinate dynamics relies on the orthogonality
+$J_i^\top J_j = 0$.  While this is approximately satisfied in the NTK regime
+(after whitening), real neural networks need not operate in this regime.
+Removing \Cref{A:orth} requires the theory of products of non-commuting random
+matrices (Furstenberg--Kesten theory), which yields qualitatively similar conclusions
+but with less explicit constants.
+
+\paragraph{Linearization gap.}
+\Cref{lem:lin} establishes that the SGD dynamics near $\theta^*$ are
+well-approximated by the linear system $\delta_{t+1} = A_{z_t}\,\delta_t$ only when
+$\|\delta_t\|$ is small.  The stability conclusions hold in a neighborhood of
+$\theta^*$; the size of this neighborhood depends on the ratio of the linearization
+error $C\eta\|\delta\|^2$ to the linear term.  A complete quantitative analysis of
+the basin of attraction requires nonlinear stability theory.
+
+\paragraph{Behavior in $\cS^\perp$.}
+The linearized SGD has no force in the orthogonal complement $\cS^\perp$: perturbations
+in this subspace remain constant.  The full nonlinear dynamics may drift in $\cS^\perp$
+due to higher-order effects, but characterizing this drift requires going beyond the
+linearization.
+
+\paragraph{Global trajectory.}
+Both \Cref{thm:instability} and \Cref{thm:stability} are local stability results.
+The global trajectory of SGD from random initialization to an element of $\cM_\eta$
+involves traversing a complex loss landscape, and its analysis remains open.  Our
+results establish \emph{which} solutions SGD can stably reside at, not \emph{how} it
+gets there.
+
+\subsection{Open problems}
+
+\begin{enumerate}
+  \item \textbf{Removing the orthogonality assumption.}\;
+    Establish the instability threshold $\eta h_{\max} > 2$ for general (non-orthogonal)
+    Jacobian configurations using Furstenberg's theory, with quantitative bounds on the
+    Lyapunov exponent.
+
+  \item \textbf{Global convergence.}\;
+    Characterize the full trajectory of SGD from random initialization to $\cM_\eta$,
+    combining the transient (non-interpolation) phase with the local stability analysis.
+
+  \item \textbf{Discrete--continuous unification.}\;
+    Develop a unified mathematical framework that handles the $\Sigma \to 0$ transition
+    between the non-interpolation and interpolation regimes.
+
+  \item \textbf{Architecture-dependent analysis.}\;
+    Determine for which architectures and data distributions the condition
+    ``low $h_{\max}$ implies good generalization'' (the analogue of $\neg F4$ in the
+    notation of Section~\ref{ssec:non-interp}) is satisfied.
+
+  \item \textbf{Mini-batch and momentum.}\;
+    Extend the per-sample Lyapunov analysis to mini-batch SGD and SGD with momentum,
+    determining how the critical learning rate $\eta_c$ is modified.
+\end{enumerate}
+
+%% =================================================================
+\section{Related Work}\label{sec:related}
+%% =================================================================
+
+\paragraph{Implicit regularization of SGD.}
+Smith and Le~\cite{SmithLe2018} observed that larger learning rates and smaller batch
+sizes improve generalization, and proposed the SDE approximation
+$d\theta = -\nabla L\,dt + \sqrt{(\eta/B)\Sigma}\,dW_t$ to explain this
+phenomenon.  Chaudhari and Soatto~\cite{ChaudhariSoatto2018} analyzed the
+Fokker--Planck equation of this SDE and showed that the stationary distribution
+$p \propto (1/\Sigma)\exp(-2V_{\mathrm{eff}}/\tau)$ biases SGD toward minima with low
+noise covariance.
+
+\paragraph{Edge of stability and sharpness reduction.}
+Wu, Wang, and Su~\cite{WuWangSu2022} studied the phenomenon of sharpness reduction
+during training, where the largest eigenvalue of the Hessian tends to decrease toward
+$2/\eta$.  Wu and Su~\cite{WuSu2023} proved that SGD cannot stably converge to
+solutions where $\tr(H) > 2/\eta$.  Our work refines this by showing that the relevant
+condition is per-sample: $h_{\max} > 2/\eta$ (not the aggregate $\tr(H) > 2/\eta$),
+and by closing the loop from stability to generalization.  The distinction matters
+because $\tr(H) = \sum_i h_i / n \cdot n = \sum_i h_i$ (for appropriately defined
+$H$), and $\tr(H) \leq 2/\eta$ is compatible with having one very large $h_k$
+compensated by many small ones, whereas our condition is not.
+
+\paragraph{Reparameterization invariance.}
+Dinh et al.~\cite{Dinh2017} demonstrated that Hessian-based sharpness measures are
+not invariant under reparameterization and constructed explicit examples where
+``sharp'' minima (in terms of Hessian eigenvalues) generalize well.  Our
+\Cref{rem:reparam} shows that the ratio $\Sigma/H$ (and its interpolation-regime
+analogue) is reparameterization-invariant, providing a more robust complexity measure.
+
+\paragraph{Li et al.\ (2021).}
+Li et al.~\cite{Li2021} studied the implicit bias of SGD toward flat minima in the
+context of label noise SGD, providing theoretical evidence that SGD noise structure
+matters for generalization.
+
+\paragraph{Chang and Khanna (2025).}
+Chang and Khanna~\cite{ChangKhanna2025} studied the relationship between SGD dynamics
+and generalization in overparameterized models, providing complementary perspectives
+on the role of stochastic noise.
+
+%% =================================================================
+%% REFERENCES
+%% =================================================================
+\begin{thebibliography}{10}
+
+\bibitem{ChaudhariSoatto2018}
+P.~Chaudhari and S.~Soatto.
+\newblock Stochastic gradient descent performs variational inference, converges to
+  limit cycles for deep networks.
+\newblock In \emph{Proceedings of ICLR}, 2018.
+
+\bibitem{Dinh2017}
+L.~Dinh, R.~Pascanu, S.~Bengio, and Y.~Bengio.
+\newblock Sharp minima can generalize for deep nets.
+\newblock In \emph{Proceedings of ICML}, pages 1019--1028, 2017.
+
+\bibitem{LiTaiE2017}
+Q.~Li, C.~Tai, and W.~E.
+\newblock Stochastic modified equations and adaptive stochastic gradient algorithms.
+\newblock In \emph{Proceedings of ICML}, pages 2101--2110, 2017.
+
+\bibitem{Li2021}
+Z.~Li, T.~Wang, and S.~Arora.
+\newblock What happens after {SGD} reaches zero loss?---{A} mathematical framework.
+\newblock In \emph{Proceedings of ICLR}, 2021.
+
+\bibitem{SmithLe2018}
+S.~L. Smith and Q.~V. Le.
+\newblock A {B}ayesian perspective on generalization and stochastic gradient descent.
+\newblock In \emph{Proceedings of ICLR}, 2018.
+
+\bibitem{WuSu2023}
+L.~Wu and W.~J. Su.
+\newblock The implicit regularization of dynamical stability in stochastic gradient
+  descent.
+\newblock In \emph{Proceedings of ICML}, 2023.
+
+\bibitem{WuWangSu2022}
+L.~Wu, X.~Wang, and W.~J. Su.
+\newblock Does the sharpness of SGD iterates control generalization?
+\newblock \emph{arXiv preprint arXiv:2207.06680}, 2022.
+
+\bibitem{ChangKhanna2025}
+H.~Chang and R.~Khanna.
+\newblock Implicit regularization of stochastic gradient descent in overparameterized
+  models.
+\newblock \emph{arXiv preprint}, 2025.
+
+\bibitem{McAllester1999}
+D.~A. McAllester.
+\newblock {PAC-Bayesian} model averaging.
+\newblock In \emph{Proceedings of COLT}, pages 164--170, 1999.
+
+\bibitem{Catoni2007}
+O.~Catoni.
+\newblock \emph{{PAC-Bayesian} Supervised Classification: The Thermodynamics of
+  Statistical Learning}.
+\newblock IMS Lecture Notes, vol.~56. Institute of Mathematical Statistics, 2007.
+
+\bibitem{MohriRostamizadehTalwalkar2018}
+M.~Mohri, A.~Rostamizadeh, and A.~Talwalkar.
+\newblock \emph{Foundations of Machine Learning}.
+\newblock MIT Press, 2nd edition, 2018.
+
+\bibitem{furstenberg1960products}
+H.~Furstenberg and H.~Kesten.
+\newblock Products of random matrices.
+\newblock \emph{Annals of Mathematical Statistics}, 31(2):457--469, 1960.
+
+\end{thebibliography}
+
+\end{document}

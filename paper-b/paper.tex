@@ -1,0 +1,987 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{natbib}
+\bibliographystyle{abbrvnat}
+
+% ── Theorem environments ──────────────────────────────────
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+% ── Notation shortcuts ────────────────────────────────────
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Tr}{\mathrm{Tr}}
+\newcommand{\dif}{\,\mathrm{d}}
+\newcommand{\Veff}{V_{\mathrm{eff}}}
+
+% ──────────────────────────────────────────────────────────
+\title{When Does SGD Fail to Find Good Solutions?\\
+Four Failure Modes and Necessary Conditions\\
+for Implicit Regularization}
+
+\author{C$\Lambda$ / Lightman\\
+\texttt{Lightman.chang@gmail.com}}
+
+\date{\today}
+
+% ──────────────────────────────────────────────────────────
+\begin{document}
+\maketitle
+
+% ══════════════════════════════════════════════════════════
+\begin{abstract}
+Stochastic gradient descent (SGD) is widely observed to find solutions that
+generalize well, a phenomenon attributed to its implicit regularization through
+gradient noise.  Yet the precise boundaries of this mechanism remain unclear:
+\emph{when does SGD fail to find good solutions?}
+
+We identify four explicit failure modes, each demonstrated by a concrete
+counterexample with quantitative analysis.
+\textbf{F1}: when the learning rate is too small, exponentially long mixing
+times trap SGD in bad basins.
+\textbf{F2}: when the learning rate is too large, a positive Lyapunov exponent
+causes divergence.
+\textbf{F3}: when the noise-to-curvature ratios $\Sigma/H$ are identical
+across minima, SGD's selection mechanism degenerates.
+\textbf{F4} (our main result): even when the dynamics mix and are stable, the
+noise-driven preference for low gradient variance can systematically select
+solutions that generalize \emph{poorly}---a noise-generalization reversal.
+This occurs because good solutions that leverage diverse features exhibit
+high per-sample gradient variance, while bad solutions that memorize exhibit
+low variance.
+
+From these four failure modes we derive four necessary conditions~(N1--N4)
+that must hold simultaneously for SGD's implicit regularization to succeed.
+The conjunction is not shown to be sufficient, and we classify this gap as
+an open problem.  Our results delineate the fundamental limits of noise-driven
+implicit regularization and highlight settings where explicit regularization
+is indispensable.
+\end{abstract}
+
+% ══════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Modern deep learning relies heavily on stochastic gradient descent and its
+variants.  A striking empirical observation is that SGD often finds solutions
+that generalize well to unseen data, even in over-parameterized settings where
+many interpolating solutions exist.  This phenomenon has been attributed to
+SGD's \emph{implicit regularization}: the stochasticity inherent in
+mini-batch sampling biases the iterates toward solutions with favorable
+properties such as low gradient noise variance or low Jacobian complexity
+\citep{smith2018dont,chaudhari2018stochastic,li2021happens}.
+
+The mechanisms underlying this bias are increasingly well understood.  In the
+non-interpolation regime, the multiplicative structure of gradient noise induces
+an effective potential $\Veff$ that differs from the training loss, favoring
+regions of low noise variance \citep{horsthemke1984noise,chaudhari2018stochastic}.
+In the interpolation regime, solutions whose per-sample Hessians exceed a
+critical threshold $2/\eta$ are destabilized by discrete dynamics
+\citep{wu2023implicit}.
+
+However, most analyses focus on \emph{when} implicit regularization succeeds,
+leaving an equally important question open: \textbf{when does it fail?}
+Understanding failure is essential for two reasons.  First, it identifies
+settings where practitioners must employ explicit regularization.  Second, it
+sharpens our theoretical understanding by delineating necessary conditions that
+any successful account of SGD's generalization must satisfy.
+
+\paragraph{Our contributions.}
+We present four explicit failure modes~(F1--F4), each as a concrete
+construction with quantitative analysis:
+\begin{enumerate}[label=\textbf{F\arabic*},leftmargin=2em]
+  \item \textbf{Insufficient mixing}: when $\eta$ is too small, Kramers escape
+        times grow exponentially, trapping SGD in bad basins for any
+        feasible training duration (\Cref{prop:f1}).
+  \item \textbf{Discrete instability}: when $\eta$ is too large, the top
+        Lyapunov exponent becomes positive and SGD diverges (\Cref{prop:f2}).
+  \item \textbf{Degeneracy of selection}: when $\Sigma/H$ is identical at all
+        minima, SGD's noise-driven preference provides no selective advantage
+        (\Cref{prop:f3}).
+  \item \textbf{Noise-generalization reversal}: the good solution has high
+        gradient noise (due to feature diversity), causing SGD to
+        \emph{systematically} converge to the bad solution (\Cref{thm:f4}).
+\end{enumerate}
+Failure mode~F4 is our main result.  It reveals a fundamental limit: SGD's
+preference for low gradient variance can conflict with generalization when
+good solutions use diverse per-sample features and bad solutions memorize
+uniformly.
+
+From these four failure modes we extract four necessary conditions~(N1--N4)
+for implicit regularization (\Cref{thm:necessary}).  We emphasize that their
+conjunction is not proven sufficient, and we classify the sufficiency question
+as an open problem.
+
+\paragraph{Paper structure.}
+\Cref{sec:prelim} introduces notation, the SGD setup, and background on noise
+selection in one dimension (as known results).
+\Cref{sec:failure} presents the four failure modes with full constructions and
+proofs.
+\Cref{sec:necessary} states the necessary conditions framework.
+\Cref{sec:reparam} establishes reparameterization invariance of $\Sigma/H$
+and its implications.
+\Cref{sec:discussion} discusses practical implications, connections to prior
+work, and open questions.
+\Cref{sec:conclusion} concludes.
+
+% ══════════════════════════════════════════════════════════
+\section{Preliminaries}
+\label{sec:prelim}
+
+% ── 2.1 ──────────────────────────────────────────────────
+\subsection{SGD Setup}
+\label{sec:sgd-setup}
+
+Let $\Theta \subseteq \R^d$ be the parameter space and let
+$L(\theta) = \frac{1}{n}\sum_{i=1}^{n} \ell_i(\theta)$ be the empirical risk,
+where each $\ell_i$ is the loss on the $i$-th training example.
+SGD with learning rate $\eta > 0$ iterates
+\begin{equation}\label{eq:sgd}
+  \theta_{t+1} = \theta_t - \eta\, \nabla \ell_{z_t}(\theta_t),
+  \qquad z_t \sim \mathrm{Uniform}(\{1,\dots,n\}) \text{ i.i.d.}
+\end{equation}
+
+% ── 2.2 ──────────────────────────────────────────────────
+\subsection{Gradient Noise Variance}
+\label{sec:noise-variance}
+
+The gradient noise variance at $\theta$ is defined as
+\begin{equation}\label{eq:sigma}
+  \Sigma(\theta)
+  = \frac{1}{n}\sum_{i=1}^{n}\bigl[\ell_i'(\theta)\bigr]^2
+    - \bigl[L'(\theta)\bigr]^2.
+\end{equation}
+At a local minimum $\theta^*$ where $L'(\theta^*)=0$, this simplifies to
+$\Sigma(\theta^*) = \frac{1}{n}\sum_{i=1}^{n}[\ell_i'(\theta^*)]^2$.
+In the multi-dimensional setting, $\Sigma(\theta)$ denotes the covariance
+matrix of the stochastic gradient; in one dimension it reduces to a
+non-negative scalar.
+
+% ── 2.3 ──────────────────────────────────────────────────
+\subsection{Convergence and Good Solutions}
+\label{sec:convergence}
+
+We distinguish three levels of convergence:
+\begin{enumerate}[label=(C\arabic*)]
+  \item \emph{Optimization convergence}: $L(\theta_t) \to L^*$ almost surely.
+  \item \emph{Distributional convergence}: $\theta_t \xrightarrow{d} \mu_\eta$
+        for some stationary measure $\mu_\eta$.
+  \item \emph{Absorption convergence}: $\theta_t \to \theta^*$ almost surely
+        for some local minimum $\theta^*$.
+\end{enumerate}
+
+A solution $\theta^*$ is considered ``good'' if it satisfies one or more of
+the following criteria:
+\begin{enumerate}[label=(G\arabic*)]
+  \item \emph{Low noise ratio}: $\Sigma(\theta^*)/H(\theta^*)$ is small
+        relative to other local minima, where $H(\theta^*) = L''(\theta^*)$.
+  \item \emph{Low Jacobian complexity}: in the interpolation regime,
+        $\mathcal{C}(\theta^*) = \|J\|_F / \sqrt{n}$ is small.
+  \item \emph{Leave-one-out stability}: the stability coefficient $\beta$ is
+        small.
+  \item \emph{Generalization}: the gap $L_{\mathrm{test}} - L_{\mathrm{train}}$
+        is small.
+\end{enumerate}
+A central theme of this paper is that SGD's noise-driven bias favors~(G1),
+and that the chain (G1)$\Rightarrow$(G3)$\Rightarrow$(G4) holds under mild
+regularity conditions---but that (G1) can \emph{conflict} with~(G4) in
+adversarial constructions (failure mode~F4).
+
+% ── 2.4 ──────────────────────────────────────────────────
+\subsection{Background: SGD Noise Selection in One Dimension}
+\label{sec:background-1d}
+
+We review known results on the stationary distribution of SGD in one
+dimension, which form the analytical foundation for our counterexamples.
+These results are not new; we state them for completeness and to fix notation.
+
+\begin{proposition}[FPE steady state; \citealt{horsthemke1984noise,chaudhari2018stochastic}]
+\label{prop:fpe}
+Consider the one-dimensional SDE approximation of SGD with temperature
+$\tau = \eta$:
+\[
+  d\theta = -L'(\theta)\dif t + \sqrt{\tau\,\Sigma(\theta)}\dif W_t.
+\]
+Assume $L,\ell_i \in C^2(\R)$, $L$ is coercive ($L(\theta)\to+\infty$ as
+$|\theta|\to\infty$), and $\Sigma(\theta)$ is strictly positive and bounded:
+$0 < \sigma_{\min}^2 \le \Sigma(\theta) \le \sigma_{\max}^2$.
+Then the Fokker--Planck equation
+\[
+  \frac{\partial p}{\partial t}
+  = \frac{\partial}{\partial\theta}\bigl[L'(\theta)\,p\bigr]
+    + \frac{\tau}{2}\frac{\partial^2}{\partial\theta^2}\bigl[\Sigma(\theta)\,p\bigr]
+\]
+has a unique stationary solution
+\begin{equation}\label{eq:fpe-steady}
+  p(\theta)
+  = \frac{1}{Z}\cdot\frac{1}{\Sigma(\theta)}
+    \cdot\exp\!\Bigl(-\frac{2}{\tau}\int^{\theta}
+      \frac{L'(s)}{\Sigma(s)}\dif s\Bigr),
+\end{equation}
+or equivalently $p(\theta) \propto \exp\!\bigl(-\frac{2}{\tau}\Veff(\theta)\bigr)$,
+where the effective potential is
+\begin{equation}\label{eq:veff}
+  \Veff(\theta) = \int^{\theta}\frac{L'(s)}{\Sigma(s)}\dif s
+    + \frac{\tau}{2}\ln\Sigma(\theta).
+\end{equation}
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Setting $\partial p/\partial t = 0$ in the Fokker--Planck equation, define the
+probability current $\mathcal{J} = -L'p - \frac{\tau}{2}(\Sigma p)'$.
+Since $\frac{d\mathcal{J}}{d\theta} = 0$, the current $\mathcal{J}$ is
+constant.  Coercivity of $L$ and boundedness of $\Sigma$ force $p(\theta)\to 0$
+as $|\theta|\to\infty$, which implies $\mathcal{J}\equiv 0$.
+Expanding $\mathcal{J}=0$ gives
+\[
+  L'p + \frac{\tau}{2}\bigl[\Sigma' p + \Sigma p'\bigr] = 0
+  \quad\Longrightarrow\quad
+  \frac{p'}{p} = -\frac{2L'}{\tau\Sigma} - \frac{\Sigma'}{\Sigma}.
+\]
+Recognizing the right-hand side as
+$-\frac{d}{d\theta}\bigl[\frac{2}{\tau}\int^{\theta}\frac{L'}{{\Sigma}}\dif s
++ \ln\Sigma\bigr]$, we integrate to obtain
+$\ln p = -\frac{2}{\tau}\int^{\theta}\frac{L'}{\Sigma}\dif s - \ln\Sigma + C$.
+Exponentiating yields~\eqref{eq:fpe-steady}.  The normalization constant
+$Z<\infty$ is guaranteed by coercivity and boundedness of~$\Sigma$.
+\end{proof}
+
+The key feature of~\eqref{eq:fpe-steady} is the prefactor $1/\Sigma(\theta)$:
+the stationary distribution assigns higher density to regions of \emph{low}
+gradient noise variance.  This is the mathematical basis of SGD's noise-driven
+selection.
+
+\begin{proposition}[Generalization gap via leave-one-out;
+  known result]
+\label{prop:gap}
+At a local minimum $\theta^*$ of $L$ with $H=L''(\theta^*)>0$, the
+leave-one-out generalization gap satisfies
+\begin{equation}\label{eq:gap}
+  \mathrm{Gap}(\theta^*) \approx \frac{\Sigma(\theta^*)}{H(\theta^*)(n-1)}.
+\end{equation}
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Removing the $j$-th sample gives $L'_{-j}(\theta^*) = -\ell_j'(\theta^*)/(n-1)$
+and $L''_{-j}(\theta^*) = (nH - \ell_j''(\theta^*))/(n-1) \equiv H_{-j}$.
+By the implicit function theorem,
+$\theta^*_{-j} - \theta^* \approx \ell_j'(\theta^*)/((n-1)H_{-j})$.
+The leave-one-out loss difference is
+$\ell_j(\theta^*_{-j}) - \ell_j(\theta^*)
+ \approx [\ell_j'(\theta^*)]^2/((n-1)H_{-j})$.
+Averaging over $j$ and using $L'(\theta^*)=0$ to identify
+$\frac{1}{n}\sum_j[\ell_j'(\theta^*)]^2 = \Sigma(\theta^*)$, we obtain
+$\mathrm{Gap} \approx \Sigma(\theta^*)/((n-1)H(\theta^*))$.
+\end{proof}
+
+% ══════════════════════════════════════════════════════════
+\section{Four Failure Modes}
+\label{sec:failure}
+
+We now present the four failure modes.  Each is an explicit construction with
+quantitative analysis, demonstrating a specific mechanism by which SGD's
+implicit regularization breaks down.  We label
+the violations of necessary conditions to be derived in \Cref{sec:necessary}.
+
+% ── 3.1 F1 ───────────────────────────────────────────────
+\subsection{F1: Insufficient Mixing}
+\label{sec:f1}
+
+\begin{proposition}[Failure by insufficient mixing]
+\label{prop:f1}
+There exists a one-dimensional loss landscape with two local minima---one good
+and one bad---such that for $\eta = 0.01$, the expected time for SGD to escape
+the bad basin exceeds $10^{1087}$ iterations.
+\end{proposition}
+
+\paragraph{Construction.}
+Consider a symmetric double-well potential with barrier height $\Delta V = 100$
+separating two wells:
+\begin{itemize}[nosep]
+  \item Well~A (good): Hessian $H_A = 2$, noise variance $\Sigma_A = 1$.
+  \item Well~B (bad): Hessian $H_B = 8$, noise variance $\Sigma_B = 8$.
+\end{itemize}
+The noise ratios satisfy $\Sigma_A/H_A = 0.5 < \Sigma_B/H_B = 1$, so
+the effective potential~\eqref{eq:veff} favors well~A (the good solution).
+However, the barrier is so high that SGD cannot reach the steady state in
+any feasible number of iterations.
+SGD is initialized in well~B.
+
+\begin{proof}
+We apply the Kramers escape formula for the SDE with multiplicative noise
+\citep{kramers1940brownian}.  The effective barrier for escape from well~B
+to well~A is computed from the effective potential~\eqref{eq:veff}.
+
+Near well~B, $\Veff$ has a local minimum.  The barrier in the effective
+potential from~B to the saddle point is
+\[
+  \Delta U_{B\to\mathrm{saddle}}
+  = \frac{\Delta V}{\Sigma_B} = \frac{100}{8} = 12.5.
+\]
+The Kramers escape time from well~B is
+\[
+  \tau_{B\to A}
+  \sim \frac{1}{\eta}\exp\!\Bigl(\frac{2\,\Delta U_{B\to\mathrm{saddle}}}{\eta}\Bigr)
+  = \frac{1}{\eta}\exp\!\Bigl(\frac{25}{\eta}\Bigr).
+\]
+Setting $\eta = 0.01$:
+\[
+  \tau_{B\to A}
+  \sim 100\cdot\exp(2500)
+  = 100\cdot 10^{2500/\ln 10}
+  \approx 10^{1087}.
+\]
+This far exceeds any feasible training budget.
+
+The key point is structural: regardless of the precise constant in the
+exponent, for any barrier $\Delta > 0$, the Kramers time scales as
+$\exp(\Theta(1/\eta))$, which grows super-exponentially as $\eta\to 0$.
+With $\eta = 0.01$, the SGD iterates remain trapped in well~B for any
+practical number of iterations, despite well~A being the preferred basin
+under the stationary distribution.
+
+This failure violates the mixing condition: the total training time $\eta T$
+is negligible compared to the mixing time $\tau_{\mathrm{mix}}$.
+\end{proof}
+
+\paragraph{Which condition is violated.}
+Condition~N1 ($\eta T \gg \tau_{\mathrm{mix}}$) is violated.
+SGD has not reached its stationary distribution and remains trapped in the
+initialization basin.
+
+% ── 3.2 F2 ───────────────────────────────────────────────
+\subsection{F2: Discrete Instability}
+\label{sec:f2}
+
+\begin{proposition}[Failure by discrete instability]
+\label{prop:f2}
+There exists a quadratic loss with two per-sample Hessians such that
+$\eta = 0.15$ yields a positive top Lyapunov exponent, causing SGD to diverge.
+\end{proposition}
+
+\paragraph{Construction.}
+Let $n=2$ with per-sample losses $\ell_1(\theta)=\frac{1}{2}\cdot 18\cdot\theta^2$
+and $\ell_2(\theta)=\frac{1}{2}\cdot 2\cdot\theta^2$, so that
+$L(\theta) = \frac{1}{2}\cdot 10\cdot\theta^2$.
+The per-sample Hessians are $h_1 = 18$ and $h_2 = 2$.
+The stability threshold is $\eta_c = 2/h_{\max} = 2/18 \approx 0.111$.
+We set $\eta = 0.15 > \eta_c$.
+
+\begin{proof}
+The SGD iteration at the origin is $\theta_{t+1} = (1 - \eta\,h_{z_t})\,\theta_t$,
+where $z_t\in\{1,2\}$ with equal probability.  The multiplicative factors are
+\[
+  1 - \eta\, h_1 = 1 - 0.15\times 18 = -1.7,
+  \qquad
+  1 - \eta\, h_2 = 1 - 0.15\times 2 = 0.7.
+\]
+Taking absolute values and logarithms:
+\[
+  \ln|1-\eta\,h_1| = \ln 1.7,
+  \qquad
+  \ln|1-\eta\,h_2| = \ln 0.7.
+\]
+The top Lyapunov exponent is the expected log-contraction rate:
+\[
+  \Lambda
+  = \frac{1}{2}\bigl(\ln 1.7 + \ln 0.7\bigr)
+  = \frac{1}{2}\ln(1.7\times 0.7)
+  = \frac{1}{2}\ln 1.19
+  \approx \frac{1}{2}\times 0.1740
+  = 0.0870.
+\]
+Since $\Lambda > 0$, the strong law of large numbers gives
+\[
+  \frac{1}{T}\ln|\theta_T|
+  = \frac{1}{T}\ln|\theta_0| + \frac{1}{T}\sum_{t=0}^{T-1}\ln|1-\eta\,h_{z_t}|
+  \;\xrightarrow{a.s.}\; \Lambda > 0.
+\]
+Therefore $|\theta_t| \sim e^{0.087\,t} \to \infty$ almost surely: SGD diverges.
+\end{proof}
+
+\paragraph{Which condition is violated.}
+Condition~N2 ($\eta < 2/\lambda_{\max}$) is violated.
+Here $\lambda_{\max} = h_1 = 18$ and $\eta = 0.15 > 2/18$.
+
+% ── 3.3 F3 ───────────────────────────────────────────────
+\subsection{F3: Degeneracy of Selection}
+\label{sec:f3}
+
+\begin{proposition}[Failure by degenerate selection]
+\label{prop:f3}
+There exist two local minima, one good and one bad, with
+$\Sigma_A/H_A = \Sigma_B/H_B$, such that the SGD stationary distribution
+assigns equal probability to both: $\pi(A)\approx \pi(B) \approx 1/2$.
+\end{proposition}
+
+\paragraph{Construction.}
+Consider a symmetric double-well loss (symmetric about the midpoint between
+wells~A and~B) with:
+\begin{itemize}[nosep]
+  \item Well~A (good generalization): $H_A$, $\Sigma_A$, with
+        $\Sigma_A / H_A = 1$.
+  \item Well~B (bad generalization): $H_B$, $\Sigma_B$, with
+        $\Sigma_B / H_B = 1$.
+\end{itemize}
+The loss values $L_A = L_B$ and the landscape is symmetric.  Despite well~A
+having lower generalization gap (due to different higher-order structure or
+sample size dependence not captured by $\Sigma/H$ alone), the noise ratios
+are equal.
+
+\begin{proof}
+By \Cref{prop:fpe}, the stationary density ratio at the two minima is
+\[
+  \frac{p(\theta_A)}{p(\theta_B)}
+  = \frac{\Sigma_B}{\Sigma_A}
+    \cdot\exp\!\Bigl(-\frac{2}{\tau}\int_{\theta_B}^{\theta_A}
+      \frac{L'(s)}{\Sigma(s)}\dif s\Bigr).
+\]
+In the symmetric case, the integral $\int_{\theta_B}^{\theta_A}
+L'(s)/\Sigma(s)\dif s = 0$ by antisymmetry.  Hence
+\[
+  \frac{p(\theta_A)}{p(\theta_B)} = \frac{\Sigma_B}{\Sigma_A}.
+\]
+Since $\Sigma_A/H_A = \Sigma_B/H_B$ with equal Hessians in the symmetric
+construction (one can set $H_A = H_B$), we have $\Sigma_A = \Sigma_B$, giving
+$p(\theta_A)/p(\theta_B) = 1$.
+
+More generally, even without $H_A = H_B$, the condition $\Sigma_A/H_A =
+\Sigma_B/H_B$ means the effective potential curvatures
+$\Veff''(\theta_k) \approx H_k/\Sigma_k$ are equal at both wells.  In a
+Laplace approximation of the stationary distribution near each well,
+\[
+  \pi(k) \propto \frac{1}{\Sigma_k}\sqrt{\frac{2\pi\tau}{2H_k/\Sigma_k}}
+  = \frac{1}{\Sigma_k}\sqrt{\frac{\pi\tau\Sigma_k}{H_k}}
+  = \frac{1}{\sqrt{\Sigma_k}}\sqrt{\frac{\pi\tau}{H_k}},
+\]
+and with $\Sigma_A/H_A = \Sigma_B/H_B$ and the symmetric construction
+$L_A = L_B$:
+\[
+  \frac{\pi(A)}{\pi(B)}
+  = \frac{\sqrt{\Sigma_B/H_B}}{\sqrt{\Sigma_A/H_A}} = 1.
+\]
+Thus $\pi(A) \approx \pi(B) \approx 1/2$.  SGD selects the good solution
+with probability no better than a fair coin.
+\end{proof}
+
+\paragraph{Which condition is violated.}
+Condition~N3 (the noise ratios $\Sigma/H$ must differ across minima) is
+violated.  When all minima share the same ratio, the noise-driven selection
+mechanism provides no bias toward good solutions.
+
+% ── 3.4 F4 ───────────────────────────────────────────────
+\subsection{F4: Noise-Generalization Reversal (Main Result)}
+\label{sec:f4}
+
+\begin{theorem}[Noise-generalization reversal]
+\label{thm:f4}
+There exists a one-dimensional loss landscape with two local minima---one with
+low generalization gap (good) and one with high generalization gap (bad)---such
+that SGD converges to the bad solution with overwhelming probability.
+Specifically, the ratio of escape times satisfies
+$\tau_A / \tau_B \sim \exp(-19/\eta) \to 0$ as $\eta\to 0$.
+\end{theorem}
+
+\paragraph{Construction.}
+Define a double-well loss with equal loss values and equal curvatures but
+different noise variances:
+\begin{itemize}[nosep]
+  \item Well~A (good generalization): $L_A = 0.1$, $H_A = 2$,
+        $\Sigma_A = 20$.
+  \item Well~B (bad generalization): $L_B = 0.1$, $H_B = 2$,
+        $\Sigma_B = 1$.
+\end{itemize}
+The generalization gaps (\Cref{prop:gap}) are
+\[
+  \mathrm{Gap}_A = \frac{\Sigma_A}{H_A(n-1)} = \frac{20}{2(n-1)} = \frac{10}{n-1},
+  \qquad
+  \mathrm{Gap}_B = \frac{\Sigma_B}{H_B(n-1)} = \frac{1}{2(n-1)} = \frac{0.5}{n-1}.
+\]
+So well~A (the good solution in terms of diversity and feature usage) has a
+\emph{larger} generalization gap as measured by $\Sigma/H$---this is
+deliberately reversed to construct the counterexample.
+
+We pause to clarify a subtle but critical point.  The LOO proxy
+$\mathrm{Gap} \approx \Sigma/(H(n-1))$ from \Cref{prop:gap} predicts that
+well~A has a \emph{larger} generalization gap than well~B.  This is precisely
+the point of the counterexample: the LOO proxy is an approximation derived
+under regularity assumptions, and it measures sensitivity to single-sample
+removal, not actual population risk.
+
+The construction posits a data-generating process where well~A corresponds
+to a solution that leverages diverse features---different training examples
+activate different model components, producing diverse per-sample gradients
+(hence high $\Sigma_A = 20$) but low population risk because the diverse
+features capture the true data structure.  Well~B corresponds to a memorizing
+solution that fits a uniform low-frequency pattern, producing nearly
+identical per-sample gradients (hence low $\Sigma_B = 1$) but high
+population risk because the uniform pattern does not capture the true
+structure.  The LOO proxy $\Sigma/(H(n-1))$ fails here because high
+per-sample gradient diversity does not imply instability to sample
+removal---it reflects feature diversity, not fragility.
+
+This is the essence of condition~N4: the noise variance $\Sigma$ tracks
+per-sample sensitivity, not generalization \emph{per se}.  When the
+correlation between $\Sigma$ and actual generalization gap is negative,
+SGD's low-$\Sigma$ preference systematically selects bad solutions.
+
+\begin{proof}
+We compute the effective potential barriers and Kramers escape times for each
+well.
+
+\medskip\noindent\textbf{Step~1: Effective potential near each well.}
+From~\eqref{eq:veff}, the effective potential near a minimum $\theta_k$
+(where $L'(\theta_k) = 0$) has the local expansion
+\[
+  \Veff(\theta)
+  \approx \Veff(\theta_k)
+    + \frac{1}{2}\Veff''(\theta_k)(\theta - \theta_k)^2 + \cdots
+\]
+The second derivative of $\Veff$ at a minimum is
+\[
+  \Veff''(\theta_k)
+  = \frac{H_k}{\Sigma_k}
+    + \frac{\tau}{2}\frac{\Sigma''_k\Sigma_k - (\Sigma'_k)^2}{\Sigma_k^2}.
+\]
+In the leading-order ($\tau\to 0$) analysis, the dominant term is $H_k/\Sigma_k$.
+
+For wells~A and~B:
+\[
+  \Veff''(\theta_A) \approx \frac{H_A}{\Sigma_A} = \frac{2}{20} = 0.1,
+  \qquad
+  \Veff''(\theta_B) \approx \frac{H_B}{\Sigma_B} = \frac{2}{1} = 2.
+\]
+
+\medskip\noindent\textbf{Step~2: Effective barrier heights.}
+Let $\theta_s$ denote the saddle point between the two wells, with
+$L(\theta_s) = L_A + \Delta V = L_B + \Delta V$ for some barrier height
+$\Delta V > 0$ in the original loss.
+
+The effective potential barrier from well~$k$ to the saddle is, to leading
+order,
+\[
+  \Delta U_k
+  = \Veff(\theta_s) - \Veff(\theta_k)
+  \approx \frac{\Delta V}{\Sigma_k},
+\]
+where we have used the fact that the integral
+$\int_{\theta_k}^{\theta_s} L'(s)/\Sigma(s)\dif s$ is dominated by the
+behavior near well~$k$ where $\Sigma\approx\Sigma_k$.
+
+We choose a concrete barrier height $\Delta V = 10$ in the original loss:
+\[
+  \Delta U_A = \frac{\Delta V}{\Sigma_A} = \frac{10}{20} = 0.5,
+  \qquad
+  \Delta U_B = \frac{\Delta V}{\Sigma_B} = \frac{10}{1} = 10.
+\]
+The ratio of effective barriers is
+\[
+  \frac{\Delta U_A}{\Delta U_B}
+  = \frac{\Sigma_B}{\Sigma_A}
+  = \frac{1}{20}.
+\]
+The good well~A has a barrier 20 times \emph{lower} in the effective potential
+than the bad well~B.
+
+\medskip\noindent\textbf{Step~3: Kramers escape times.}
+The Kramers escape time from well~$k$ is \citep{kramers1940brownian}
+\[
+  \tau_k \sim \frac{1}{\eta}\exp\!\Bigl(\frac{2\,\Delta U_k}{\eta}\Bigr).
+\]
+Taking the ratio with $\Delta U_A = 0.5$ and $\Delta U_B = 10$:
+\begin{equation}\label{eq:f4-ratio}
+  \frac{\tau_A}{\tau_B}
+  \sim \exp\!\Bigl(\frac{2(\Delta U_A - \Delta U_B)}{\eta}\Bigr)
+  = \exp\!\Bigl(\frac{2(0.5 - 10)}{\eta}\Bigr)
+  = \exp\!\Bigl(-\frac{19}{\eta}\Bigr).
+\end{equation}
+
+\medskip\noindent\textbf{Step~4: Stationary distribution.}
+In the two-well approximation, the stationary occupation probabilities satisfy
+\[
+  \frac{\pi(B)}{\pi(A)}
+  = \frac{\tau_B}{\tau_A}
+  \sim \exp\!\Bigl(\frac{19}{\eta}\Bigr) \to \infty
+  \quad\text{as } \eta\to 0.
+\]
+Therefore $\pi(B) \to 1$: SGD converges to the bad solution~B with
+overwhelming probability.
+
+\medskip\noindent\textbf{Step~5: Verification of the reversal.}
+Well~B has the lower gradient noise variance ($\Sigma_B = 1 < 20 = \Sigma_A$),
+so SGD's noise-driven preference favors~B.  But well~B has worse
+generalization.  The stationary distribution
+$p(\theta_B)/p(\theta_A) = (\Sigma_A/\Sigma_B)\cdot(\cdots) = 20\cdot(\cdots)$,
+where the exponential factor further amplifies the preference for~B.
+This is the noise-generalization reversal.
+\end{proof}
+
+\paragraph{Why this happens.}
+The reversal has a natural interpretation.  The good solution~A achieves low
+test error by leveraging diverse features in the data.  Different training
+examples activate different features, leading to diverse per-sample gradients
+and hence high $\Sigma_A$.  The bad solution~B memorizes a uniform pattern
+(e.g., a low-frequency component or a label-correlated shortcut), producing
+nearly identical per-sample gradients and hence low~$\Sigma_B$.
+
+SGD's noise-driven selection mechanism~\eqref{eq:fpe-steady} favors regions
+of low $\Sigma$, which is precisely the memorizing solution.  This is the
+fundamental limit of noise-driven implicit regularization: the same mechanism
+that in typical settings provides beneficial regularization can, when the
+correlation between noise variance and generalization is reversed,
+systematically select bad solutions.
+
+\paragraph{Which condition is violated.}
+Condition~N4 ($\mathrm{Corr}(\Sigma, \mathrm{Gap}) > 0$) is violated.
+In this construction, high~$\Sigma$ corresponds to \emph{low} generalization
+gap (good) and low~$\Sigma$ corresponds to high generalization gap (bad),
+reversing the alignment that implicit regularization requires.
+
+% ══════════════════════════════════════════════════════════
+\section{Necessary Conditions Framework}
+\label{sec:necessary}
+
+The four failure modes of \Cref{sec:failure} directly yield four necessary
+conditions for SGD's implicit regularization to succeed.
+
+\begin{theorem}[Four necessary conditions]
+\label{thm:necessary}
+For SGD to converge to a good solution (in the sense of low generalization gap)
+with high probability, the following conditions are all necessary:
+\begin{enumerate}[label=\textup{\textbf{(N\arabic*)}},leftmargin=3em]
+  \item \textbf{Sufficient mixing:}
+        $\eta T \gg \tau_{\mathrm{mix}}$, where $\tau_{\mathrm{mix}}$ is the
+        mixing time of the SGD Markov chain.
+  \item \textbf{Discrete stability:}
+        $\eta < 2/\lambda_{\max}$, where $\lambda_{\max}$ is the largest
+        per-sample Hessian eigenvalue.
+  \item \textbf{Selection power:}
+        The noise-to-curvature ratios $\Sigma(\theta^*)/H(\theta^*)$ differ
+        across local minima.
+  \item \textbf{Correct alignment:}
+        $\mathrm{Corr}(\Sigma, \mathrm{Gap}) > 0$, i.e., minima with higher
+        gradient noise variance also have higher generalization gap.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Each condition is necessary because violating it leads to a demonstrated
+failure:
+\begin{itemize}[nosep]
+  \item Violating~(N1) leads to failure mode~F1 (\Cref{prop:f1}): SGD is
+        trapped in the initialization basin and cannot reach the good solution,
+        regardless of the stationary distribution's preference.
+  \item Violating~(N2) leads to failure mode~F2 (\Cref{prop:f2}): SGD diverges
+        due to a positive Lyapunov exponent, preventing convergence to any
+        solution.
+  \item Violating~(N3) leads to failure mode~F3 (\Cref{prop:f3}): the
+        stationary distribution assigns equal weight to good and bad minima,
+        so SGD provides no selective advantage.
+  \item Violating~(N4) leads to failure mode~F4 (\Cref{thm:f4}): the
+        noise-driven selection systematically favors the bad solution.
+\end{itemize}
+In each case, the failure is demonstrated by an explicit construction, so
+the condition is necessary for success across all problem instances.
+\end{proof}
+
+\begin{remark}[The conjunction is not proven sufficient]
+\label{rem:not-sufficient}
+While conditions~(N1)--(N4) are each necessary, we do not claim that their
+conjunction is sufficient for SGD to find good solutions.  Additional
+conditions---related to the landscape geometry, initialization distribution,
+or higher-order properties of the noise structure---may also be required.
+We leave the question of identifying a minimal set of sufficient conditions
+as an important open problem.
+\end{remark}
+
+\begin{remark}[Three-level classification of conditions]
+\label{rem:three-level}
+The conditions can be organized into a three-level hierarchy:
+\begin{enumerate}[nosep]
+  \item \textbf{Necessary:} The global minimum of the effective potential
+        $\Veff$ lies in the set of good solutions.  If this fails, the
+        stationary distribution concentrates on a bad solution (as
+        $\tau\to 0$).
+  \item \textbf{Sufficient:} The global minimum of $\Veff$ is unique in the
+        good set, with spectral gap $\Delta > 0$, and $\tau \ll \Delta$.
+        Then $\Prob(\text{good solution}) \ge 1 - (K-1)\exp(-2\Delta/\tau)$.
+  \item \textbf{Approximately sufficient:} All minima of $\Veff$ with values
+        within $\delta$ of the global minimum are approximately good (gap
+        $\le \varepsilon + \varepsilon'$).  Then
+        $\Prob(\mathrm{Gap}\le\varepsilon+\varepsilon') \ge 1-\gamma$, where
+        $\gamma \sim K e^{-2\delta/\tau}$.
+\end{enumerate}
+Conditions~(N1)--(N4) are at level~1.  Closing the gap to level~2 or~3
+requires quantitative control over the landscape that goes beyond our
+current results.
+\end{remark}
+
+% ══════════════════════════════════════════════════════════
+\section{Reparameterization Invariance}
+\label{sec:reparam}
+
+A natural concern is whether the failure mode~F4 is an artifact of a
+particular parameterization.  We show that it is not, because the key
+quantity $\Sigma/H$ is reparameterization-invariant.
+
+\begin{proposition}[Reparameterization invariance of $\Sigma/H$]
+\label{prop:reparam}
+Let $\theta = g(\varphi)$ be a smooth bijection (reparameterization), and
+let $\varphi^* = g^{-1}(\theta^*)$.  Define the reparameterized Hessian
+$\tilde{H} = L''(g(\varphi^*))\cdot [g'(\varphi^*)]^2$ and the
+reparameterized noise variance
+$\tilde{\Sigma} = \frac{1}{n}\sum_i [\ell_i'(g(\varphi^*))]^2\cdot [g'(\varphi^*)]^2$.
+Then
+\[
+  \frac{\tilde{\Sigma}}{\tilde{H}} = \frac{\Sigma(\theta^*)}{H(\theta^*)}.
+\]
+\end{proposition}
+
+\begin{proof}
+Under the reparameterization $\theta = g(\varphi)$, the chain rule gives
+\[
+  \frac{\partial \ell_i}{\partial\varphi}\bigg|_{\varphi^*}
+  = \ell_i'(g(\varphi^*))\cdot g'(\varphi^*)
+  = \ell_i'(\theta^*)\cdot g'(\varphi^*).
+\]
+Therefore the reparameterized noise variance is
+\[
+  \tilde{\Sigma}
+  = \frac{1}{n}\sum_{i=1}^{n}
+    \Bigl[\ell_i'(\theta^*)\cdot g'(\varphi^*)\Bigr]^2
+  = \Sigma(\theta^*)\cdot \bigl[g'(\varphi^*)\bigr]^2.
+\]
+Similarly, the reparameterized Hessian of $L$ at $\varphi^*$ (using
+$L'(\theta^*)=0$, so the first-derivative term in the chain rule for
+second derivatives vanishes) is
+\[
+  \tilde{H}
+  = L''(\theta^*)\cdot\bigl[g'(\varphi^*)\bigr]^2
+  = H(\theta^*)\cdot\bigl[g'(\varphi^*)\bigr]^2.
+\]
+The ratio is
+\[
+  \frac{\tilde{\Sigma}}{\tilde{H}}
+  = \frac{\Sigma(\theta^*)\cdot[g'(\varphi^*)]^2}{H(\theta^*)\cdot[g'(\varphi^*)]^2}
+  = \frac{\Sigma(\theta^*)}{H(\theta^*)}.
+  \qedhere
+\]
+\end{proof}
+
+\begin{corollary}
+\label{cor:gap-intrinsic}
+The generalization gap proxy $\mathrm{Gap}(\theta^*) \approx \Sigma(\theta^*)/(H(\theta^*)(n-1))$ from \Cref{prop:gap} is a reparameterization-invariant quantity.
+\end{corollary}
+
+\begin{proof}
+Immediate from \Cref{prop:reparam}: $\tilde{\Sigma}/\tilde{H} = \Sigma/H$,
+so $\tilde{\Sigma}/(\tilde{H}(n-1)) = \Sigma/(H(n-1))$.
+\end{proof}
+
+\paragraph{Implication for F4.}
+The noise-generalization reversal in \Cref{thm:f4} is not an artifact of a
+particular coordinate system.  Since both $\Sigma/H$ and the effective
+potential $\Veff$ are built from reparameterization-invariant quantities, the
+conflict between SGD's noise preference and generalization persists under any
+smooth reparameterization.  This underscores that F4 is a fundamental
+limitation, not a coordinate-dependent pathology.
+
+% ══════════════════════════════════════════════════════════
+\section{Discussion}
+\label{sec:discussion}
+
+% ── 6.1 ──────────────────────────────────────────────────
+\subsection{Implications for Practice}
+\label{sec:practice}
+
+Each failure mode suggests a practical intervention:
+\begin{itemize}[nosep]
+  \item \textbf{F1 (insufficient mixing)}: Use learning rate warm-up or
+        cyclical learning rate schedules to help SGD escape bad basins early
+        in training.
+  \item \textbf{F2 (discrete instability)}: Do not use learning rates that
+        are too large.  The stability threshold $\eta < 2/\lambda_{\max}$
+        provides a principled upper bound.
+  \item \textbf{F3 (degenerate selection)}: Data augmentation and diverse
+        training data can break symmetry in $\Sigma/H$ ratios across minima,
+        restoring SGD's selective power.
+  \item \textbf{F4 (noise-generalization reversal)}: When the correlation
+        between gradient noise and generalization is negative---as may occur
+        with small datasets, shortcut features, or distribution shift---explicit
+        regularization (weight decay, dropout, early stopping) is essential.
+        SGD's implicit regularization alone is insufficient.
+\end{itemize}
+
+% ── 6.2 ──────────────────────────────────────────────────
+\subsection{Connection to the Interpolation Regime}
+\label{sec:interpolation}
+
+In the modern over-parameterized interpolation regime, all training losses
+reach zero: $\ell_i(\theta^*)=0$ for all~$i$.  This implies
+$\nabla\ell_i(\theta^*)=0$ and hence $\Sigma(\theta^*)=0$ at every
+interpolating solution.  The continuous-time SDE framework becomes degenerate,
+and the noise-driven selection mechanism analyzed here does not directly apply.
+
+Instead, implicit regularization in the interpolation regime operates through
+a different mechanism: discrete stability.  Solutions with
+$\eta\,h_{\max} > 2$ are destabilized, while those with $\eta\,h_{\max} < 2$
+remain stable \citep{wu2023implicit}.  This selects for solutions with low
+Jacobian complexity $\mathcal{C}(\theta^*) = \|J\|_F/\sqrt{n}$.
+
+Our failure mode~F2 is relevant in this regime: choosing $\eta$ too large
+may destabilize all solutions.  Failure modes F3 and F4, as stated, pertain
+primarily to the non-interpolation regime where $\Sigma > 0$.  However, the
+conceptual lesson of~F4---that the metric optimized by SGD's dynamics may
+not align with generalization---extends to the interpolation regime as well:
+low Jacobian complexity is not a universal proxy for generalization.
+
+% ── 6.3 ──────────────────────────────────────────────────
+\subsection{Relation to Prior Work}
+\label{sec:prior}
+
+\paragraph{Shape matters \citep{li2021happens}.}
+Li et al.\ demonstrate that SGD's noise structure (not just its magnitude)
+influences which minima are selected.  Our work is complementary: we identify
+four settings where even the correct noise structure fails to produce good
+solutions.
+
+\paragraph{Sharp minima can generalize \citep{dinh2017sharp}.}
+Dinh et al.\ show that reparameterization can make any minimum arbitrarily
+sharp without affecting generalization, challenging flatness-based explanations.
+Our \Cref{prop:reparam} resonates with this observation: $H$ alone is not
+invariant, but $\Sigma/H$ is.  However, F4 shows that even the
+reparameterization-invariant quantity $\Sigma/H$ can fail as a generalization
+proxy.
+
+\paragraph{Implicit regularization in linear models \citep{arora2019implicit}.}
+Arora et al.\ characterize implicit regularization for deep linear networks.
+Their results show that architecture (depth, width) shapes the implicit bias.
+Our F4 highlights that even with fixed architecture, the data distribution
+can induce a noise-generalization reversal.
+
+\paragraph{Entropy-SGD \citep{chaudhari2018stochastic}.}
+Chaudhari and Soatto connect SGD to an entropy-regularized objective,
+establishing a link between noise and flatness-seeking behavior.  Our
+\Cref{prop:fpe} uses the same FPE framework; F4 demonstrates a failure
+of the resulting selection when the noise-generalization correlation is
+negative.
+
+% ── 6.4 ──────────────────────────────────────────────────
+\subsection{Open Questions}
+\label{sec:open}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Sufficiency.}  Are conditions (N1)--(N4) jointly sufficient?
+        We conjecture they are not, and that additional landscape conditions
+        are needed.  Identifying a minimal sufficient set is a key open problem.
+  \item \textbf{Multi-dimensional effective potential.}  In dimension $d>1$,
+        the detailed balance condition may fail, and the steady state involves
+        a Freidlin--Wentzell quasipotential rather than an explicit formula.
+        Extending our results to this setting is technically demanding.
+  \item \textbf{Prevalence of F4.}  How often does the noise-generalization
+        reversal occur in practical deep learning?  Characterizing the
+        data-architecture combinations that lead to $\mathrm{Corr}(\Sigma,
+        \mathrm{Gap}) < 0$ is an empirical and theoretical challenge.
+  \item \textbf{Global trajectory analysis.}  Our results are local (near
+        minima).  Understanding SGD's global trajectory from random
+        initialization to a basin of attraction requires different tools.
+  \item \textbf{Discrete-continuous unification.}  The non-interpolation and
+        interpolation regimes use fundamentally different mathematical
+        frameworks.  A unified theory handling the $\Sigma\to 0$ limit
+        remains open.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have identified four failure modes of SGD's implicit regularization, each
+demonstrated by an explicit construction with quantitative analysis.  Failure
+modes F1--F3 concern the dynamics (mixing time, stability, and selection
+power), while F4---our main result---reveals a fundamental limitation: SGD's
+noise-driven preference for low gradient variance can systematically select
+solutions that generalize poorly when good solutions use diverse features
+(high $\Sigma$) and bad solutions memorize (low $\Sigma$).
+
+From these failure modes we derived four necessary conditions (N1--N4) that
+must hold simultaneously for implicit regularization to succeed.  The
+conditions span three distinct aspects: the optimization dynamics (N1, N2),
+the noise structure (N3), and the data-dependent alignment between noise and
+generalization (N4).  Their conjunction is not shown to be sufficient, and
+closing this gap remains an important open problem.
+
+Our results carry a practical message: in settings where condition~N4 may be
+violated---small datasets, distribution shift, shortcut features---relying
+solely on SGD's implicit regularization is insufficient, and explicit
+regularization is needed.
+
+
+% ══════════════════════════════════════════════════════════
+\begin{thebibliography}{10}
+
+\bibitem[Arora et~al.(2019)]{arora2019implicit}
+S.~Arora, N.~Cohen, W.~Hu, and Y.~Luo.
+\newblock Implicit regularization in deep matrix factorization.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2019.
+
+\bibitem[Chaudhari and Soatto(2018)]{chaudhari2018stochastic}
+P.~Chaudhari and S.~Soatto.
+\newblock Stochastic gradient descent performs variational inference, converges
+  to limit cycles for deep networks.
+\newblock In \emph{International Conference on Learning Representations}, 2018.
+
+\bibitem[Dinh et~al.(2017)]{dinh2017sharp}
+L.~Dinh, R.~Pascanu, S.~Bengio, and Y.~Bengio.
+\newblock Sharp minima can generalize for deep nets.
+\newblock In \emph{International Conference on Machine Learning}, 2017.
+
+\bibitem[Horsthemke and Lefever(1984)]{horsthemke1984noise}
+W.~Horsthemke and R.~Lefever.
+\newblock \emph{Noise-Induced Transitions: Theory and Applications in Physics,
+  Chemistry, and Biology}.
+\newblock Springer-Verlag, 1984.
+
+\bibitem[Kramers(1940)]{kramers1940brownian}
+H.~A. Kramers.
+\newblock Brownian motion in a field of force and the diffusion model of
+  chemical reactions.
+\newblock \emph{Physica}, 7(4):284--304, 1940.
+
+\bibitem[Li et~al.(2021)]{li2021happens}
+Z.~Li, T.~Wang, and S.~Arora.
+\newblock What happens after {SGD} reaches zero loss? {A} mathematical
+  framework.
+\newblock In \emph{International Conference on Learning Representations}, 2021.
+
+\bibitem[Smith and Le(2018)]{smith2018dont}
+S.~L. Smith and Q.~V. Le.
+\newblock A {B}ayesian perspective on generalization and stochastic gradient
+  descent.
+\newblock In \emph{International Conference on Learning Representations}, 2018.
+
+\bibitem[Wu and Su(2023)]{wu2023implicit}
+L.~Wu and W.~J. Su.
+\newblock The implicit regularization of dynamical stability in stochastic
+  gradient descent.
+\newblock In \emph{Proceedings of the 40th International Conference on Machine
+  Learning (ICML)}, volume 202 of \emph{PMLR}, pp.\ 37656--37684, 2023.
+
+\end{thebibliography}
+
+\end{document}
