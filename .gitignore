@@ -8,3 +8,9 @@ mydatabase.db
 .claude/
 .DS_Store
 paper-*/paper.pdf
+paper-*/*.aux
+paper-*/*.log
+paper-*/*.out
+paper-*/*.fls
+paper-*/*.fdb_latexmk
+paper-*/*.synctex.gz
