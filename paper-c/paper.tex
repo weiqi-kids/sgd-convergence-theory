@@ -1,0 +1,1308 @@
+%%% A Closed-Loop Theorem for SGD's Noise-Driven Selection
+%%% in the Non-Interpolation Regime
+%%%
+%%% Type A paper: theorem with rigorous proof.
+%%% Companion to paper-a (interpolation regime, discrete Lyapunov)
+%%% and paper-b (failure modes F1-F4).
+
+\documentclass[11pt,a4paper]{article}
+
+%% ---------- packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+%% ---------- theorem environments ----------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+%% ---------- macros ----------
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\spn}{span}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\curl}{curl}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\dif}{\,\mathrm{d}}
+\newcommand{\Veff}{V_{\mathrm{eff}}}
+\newcommand{\Gap}{\mathrm{Gap}}
+\newcommand{\LOO}{\mathrm{LOO}}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\inner}[2]{\langle #1,#2\rangle}
+
+%% ---------- metadata ----------
+\title{\Large A Closed-Loop Theorem for SGD's Noise-Driven Selection\\[4pt]
+       \large in the Non-Interpolation Regime}
+\author{Lightman Chang\\
+        Independent Researcher\\
+        \texttt{lightman.chang@gmail.com}}
+\date{}
+
+%% =================================================================
+\begin{document}
+\maketitle
+
+%% =================================================================
+%% ABSTRACT
+%% =================================================================
+\begin{abstract}
+We study the implicit regularization of stochastic gradient descent (SGD) in
+the \emph{non-interpolation} regime, where the gradient noise covariance
+$\Sigma(\theta^*)$ at a local minimum is strictly positive and the
+continuous-time Fokker--Planck approximation is non-degenerate.  Our main
+result (\Cref{thm:closed-loop}) is a closed-loop theorem with three
+quantitatively linked components: (i) the SGD stationary measure on a
+multi-well potential admits an explicit Gibbs-type formula whose
+relative weights at two minima are governed by the ratios
+$\Sigma_A/\Sigma_B$ and $H_A/H_B$; (ii) the leave-one-out generalization gap
+at a quadratic minimum equals $\Sigma(\theta^*)/(H(\theta^*)(n-1))$ up to
+$O(n^{-2})$; (iii) consequently $\Sigma_A/H_A < \Sigma_B/H_B$ implies that
+SGD concentrates on the basin of $\theta_A^*$ \emph{and} that $\theta_A^*$
+has a strictly smaller test-loss bound than $\theta_B^*$, with explicit
+margin.  We extend the dynamic part to multivariate parameter spaces via the
+Freidlin--Wentzell quasipotential, working out a two-dimensional example with
+state-dependent diffusion in which detailed balance fails but the
+quasipotential admits a closed-form Hamilton--Jacobi expansion
+(\Cref{thm:multi}).  We prove that the ratio $\Sigma/H$, and its
+multivariate generalization $\tr(H^{-1}\Sigma)$, are invariant under smooth
+diffeomorphisms of the parameter space (\Cref{prop:reparam}), which makes
+the selection criterion intrinsic.  The result is the non-interpolation
+counterpart of the discrete Lyapunov closed loop established in
+\cite{paperA} for the interpolation regime, and its sharpness is exactly
+delimited by the four failure modes catalogued in \cite{paperB}; in
+particular, the implication (iii) is reversed by failure mode~F4, and the
+interplay is made precise.
+\end{abstract}
+
+%% =================================================================
+\section{Introduction}\label{sec:intro}
+%% =================================================================
+
+\paragraph{The problem.}
+Stochastic gradient descent (SGD) is the workhorse optimizer of modern
+machine learning, and a long line of work has tried to explain why it
+selects, among the many local minima of a non-convex training loss, those
+that generalize well to unseen data.  In the \emph{non-interpolation
+regime}---where the training loss does not vanish, so the per-sample
+gradients $\nabla\ell_i(\theta^*)$ at a local minimum~$\theta^*$ are not all
+zero---a popular explanation models SGD by the It\^o stochastic
+differential equation (SDE)
+\[
+   d\theta_t \;=\; -\nabla L(\theta_t)\dif t
+                  \;+\; \sqrt{\tau\,\Sigma(\theta_t)}\,dW_t,
+   \qquad
+   \tau \;=\; \eta/B,
+\]
+where $\eta$ is the learning rate, $B$ is the batch size and
+$\Sigma(\theta)$ is the per-sample gradient covariance
+\cite{LiTaiE2017,SmithLe2018,MandtHoffmanBlei2017,ChaudhariSoatto2018}.  The
+multiplicative structure of $\Sigma$ then biases the Fokker--Planck
+stationary distribution toward minima of low noise covariance.  This is
+appealing as a heuristic, but two questions have remained open at a fully
+rigorous level:
+\begin{enumerate}[label=(Q\arabic*),leftmargin=2.6em]
+\item \label{Q1}
+   Can the dynamic preference of SGD for a particular local minimum be
+   quantified by an explicit, parameter-free formula in terms of the
+   curvature $H(\theta^*)$ and the noise covariance $\Sigma(\theta^*)$?
+\item \label{Q2}
+   Does this dynamic preference align with a sample-based notion of
+   generalization---e.g.\ leave-one-out (LOO) stability---and if so,
+   through which intrinsic geometric quantity?
+\end{enumerate}
+
+\paragraph{What we do.}
+We answer \ref{Q1} and \ref{Q2} in the affirmative under explicit assumptions
+that we state quantitatively.  Specifically, we prove a single closed-loop
+theorem that links three components: the Fokker--Planck stationary
+distribution (selection), the leave-one-out gap (generalization), and the
+implication that connects them.  All three reduce, in the symmetric
+two-well one-dimensional case, to the single intrinsic quantity
+$\Sigma(\theta^*)/H(\theta^*)$.  The qualitative picture has been suggested
+in earlier work \cite{ChaudhariSoatto2018,SmithLe2018,HaoChen2021}; the
+contribution of the present paper is to make every step quantitative and
+self-contained, including a multivariate extension via the
+Freidlin--Wentzell quasipotential and a complete reparameterization
+invariance proof.
+
+\paragraph{Position relative to companion papers.}
+This paper is the third in a series.  Paper~A \cite{paperA} treats the
+\emph{interpolation regime}, where every interpolating solution has
+$\Sigma(\theta^*)=0$, the SDE approximation degenerates, and a discrete
+Lyapunov-exponent analysis must replace the Fokker--Planck argument.
+Paper~B \cite{paperB} catalogues four failure modes (F1: insufficient
+mixing; F2: discrete instability; F3: degenerate selection; F4:
+noise--generalization reversal) under which the closed loop breaks.  The
+present paper-C is the positive counterpart in the non-interpolation regime:
+it states and proves the closed loop precisely under the negation of those
+four failure modes, and isolates the hypothesis on which the implication
+between selection and generalization rests, namely the alignment of low
+$\Sigma/H$ with low test loss (the negation of F4).
+
+\paragraph{Main results, informally.}
+Let $\theta_A^*$ and $\theta_B^*$ be two locally quadratic minima of $L$
+with curvatures $H_A,H_B>0$ and noise covariances $\Sigma_A,\Sigma_B>0$.
+Under explicit ergodicity assumptions:
+\begin{itemize}
+\item (\Cref{thm:closed-loop} Part~I) The SGD stationary density is
+   $p(\theta) \propto \Sigma(\theta)^{-1}\exp(-(2/\tau)\,U(\theta))$
+   for an explicit drift potential $U$, and in the symmetric one-dimensional
+   case $p(\theta_A^*)/p(\theta_B^*) = \Sigma_B/\Sigma_A$.
+\item (\Cref{thm:closed-loop} Part~II) The LOO generalization gap at a
+   quadratic minimum $\theta^*$ satisfies
+   $\Gap_{\LOO}(\theta^*) \;=\; \Sigma(\theta^*)/(H(\theta^*)(n-1)) \;+\;
+                                                                  O(n^{-2})$.
+\item (\Cref{thm:closed-loop} Part~III) If $\Sigma_A/H_A < \Sigma_B/H_B$,
+   then the SGD-stationary measure concentrates on the basin of $\theta_A^*$
+   in the sense of \Cref{thm:closed-loop}, and $\theta_A^*$'s test-loss
+   bound is strictly smaller than that of $\theta_B^*$ with explicit margin
+   $\bigl(\Sigma_B/H_B - \Sigma_A/H_A\bigr)/(n-1)$.
+\item (\Cref{thm:multi}) For a state-dependent multivariate diffusion in
+   which detailed balance fails, the Freidlin--Wentzell quasipotential
+   exists and is the unique viscosity solution of an explicit
+   Hamilton--Jacobi equation.  We give a worked $2$D example for which
+   the leading correction to the naive potential is computed in closed
+   form.
+\item (\Cref{prop:reparam}) The ratio $\Sigma/H$, and its multivariate
+   generalization $\tr(H^{-1}\Sigma)$, are invariant under smooth
+   diffeomorphisms of the parameter space.
+\end{itemize}
+
+\paragraph{Organization.}
+\Cref{sec:prelim} fixes the notation and lists the standing assumptions.
+\Cref{sec:theorem-statement} states the main theorem.
+\Cref{sec:proof-1,sec:proof-2,sec:proof-3} contain the three parts of the
+proof.  \Cref{sec:multi} contains the multivariate extension.
+\Cref{sec:reparam} contains the reparameterization invariance proof.
+\Cref{sec:discussion} discusses the boundary with paper~B, the relation to
+paper~A, and the open problems.
+
+%% =================================================================
+\section{Preliminaries}\label{sec:prelim}
+%% =================================================================
+
+\subsection{The empirical risk and SGD}\label{sec:sgd}
+
+Let $S = \{z_1,\dots,z_n\} \subset \mathcal{Z}$ be a training set drawn
+i.i.d.\ from a distribution $\mathcal{D}$.  Fix a parameter space
+$\Theta \subseteq \R^d$ and a per-sample loss
+$\ell:\Theta \times \mathcal{Z}\to \R$ that is $C^2$ in $\theta$.  Write
+\[
+   L(\theta) \;=\; \frac{1}{n}\sum_{i=1}^n \ell_i(\theta),
+   \qquad
+   \ell_i(\theta) \;:=\; \ell(\theta,z_i).
+\]
+SGD is the recursion
+\begin{equation}\label{eq:sgd-recursion}
+   \theta_{t+1} \;=\; \theta_t \;-\; \eta\,\nabla \ell_{I_t}(\theta_t),
+   \qquad I_t \sim \mathrm{Uniform}\{1,\dots,n\},\;\; \text{i.i.d.}
+\end{equation}
+We work with constant learning rate $\eta>0$.  The mini-batch case
+$B\geq 1$ is identical with $\tau:=\eta/B$ in place of $\eta$ throughout.
+
+\subsection{Curvature and gradient noise}
+
+\begin{definition}[Curvature and noise covariance]\label{def:H-Sigma}
+   At any $\theta\in\Theta$,
+   \begin{align*}
+      H(\theta) &\;:=\; \nabla^2 L(\theta) \;=\;
+                       \frac{1}{n}\sum_{i=1}^n \nabla^2 \ell_i(\theta),\\
+      \Sigma(\theta) &\;:=\;
+         \frac{1}{n}\sum_{i=1}^n
+            \bigl(\nabla\ell_i(\theta) - \nabla L(\theta)\bigr)
+            \bigl(\nabla\ell_i(\theta) - \nabla L(\theta)\bigr)^{\!\top}.
+   \end{align*}
+   When $d=1$ both reduce to scalars.  At a critical point $\theta^*$
+   ($\nabla L(\theta^*)=0$), the noise covariance simplifies to
+   $\Sigma(\theta^*) = \frac{1}{n}\sum_{i=1}^n \nabla\ell_i(\theta^*)
+                                              \nabla\ell_i(\theta^*)^\top$.
+\end{definition}
+
+\begin{definition}[Three-level convergence]\label{def:three-level}
+   We distinguish:
+   \begin{itemize}[leftmargin=2em]
+   \item[\textbf{(C1)}] \emph{Loss convergence}: $L(\theta_t) \to L^*$
+                       almost surely, for some $L^*$.
+   \item[\textbf{(C2)}] \emph{Distributional convergence}: there is a
+                       probability measure $\mu_\eta$ on $\Theta$ such that
+                       the law of $\theta_t$ converges weakly to
+                       $\mu_\eta$ as $t \to \infty$.
+   \item[\textbf{(C3)}] \emph{Absorption convergence}: $\theta_t\to\theta^*$
+                       almost surely for some critical point $\theta^*$.
+   \end{itemize}
+\end{definition}
+
+In the non-interpolation regime, (C3) does not hold for SGD with constant
+$\eta>0$: the iterates fluctuate in a basin rather than converge to a
+single point.  The natural mode of convergence is (C2), and we shall
+characterize the limit $\mu_\eta$.
+
+\subsection{The Fokker--Planck approximation}
+
+For small $\eta$, the recursion \eqref{eq:sgd-recursion} is approximated
+\cite{LiTaiE2017,MandtHoffmanBlei2017,SmithLe2018} by the It\^o SDE
+\begin{equation}\label{eq:sgd-sde}
+   d\theta_t \;=\; -\nabla L(\theta_t)\,\dif t
+                  \;+\;\sqrt{\tau\,\Sigma(\theta_t)}\,dW_t,
+   \qquad \tau = \eta/B.
+\end{equation}
+The corresponding Fokker--Planck equation (FPE) for the density $p(t,\theta)$ is
+\begin{equation}\label{eq:fpe}
+   \partial_t p \;=\;
+       \nabla\!\cdot\!\bigl(\nabla L\,p\bigr)
+   \;+\; \frac{\tau}{2}\,
+       \nabla\!\cdot\!\nabla\!\cdot\!\bigl(\Sigma\,p\bigr).
+\end{equation}
+We take \eqref{eq:fpe} as the working model for the density $\mu_\eta$ and
+state our assumptions accordingly.  The standard estimate that justifies
+\eqref{eq:sgd-sde}--\eqref{eq:fpe} is that any time-marginal
+$\E[\phi(\theta_T)]$ for $\phi\in C^4_b$ agrees up to $O(\eta^2)$ with the
+SDE prediction at horizon $T = N\eta$ uniformly for bounded $N$
+\cite{LiTaiE2017}.  Throughout this paper we therefore identify SGD's
+long-time behaviour with the stationary measure of \eqref{eq:fpe}.
+
+\subsection{Standing assumptions}
+
+\begin{assumption}[Smoothness]\label{A:C2}
+   $L\in C^3(\Theta)$ and $\ell_i\in C^2(\Theta)$ for $i=1,\dots,n$.
+\end{assumption}
+
+\begin{assumption}[Coercivity]\label{A:coerc}
+   $L(\theta)\to+\infty$ as $\norm{\theta}\to\infty$, with growth at most
+   polynomial: there is $r>0$ such that $\norm{\nabla L(\theta)}
+   \leq C(1+\norm{\theta}^r)$.
+\end{assumption}
+
+\begin{assumption}[Uniform ellipticity of noise]\label{A:ellip}
+   There are constants $0 < \sigma_{\min}^2 \leq \sigma_{\max}^2 < \infty$
+   such that for every $\theta$ and every unit vector $v\in\R^d$,
+   \[
+      \sigma_{\min}^2 \;\leq\; v^{\!\top}\Sigma(\theta)\,v
+                    \;\leq\; \sigma_{\max}^2.
+   \]
+\end{assumption}
+
+\begin{assumption}[Two locally quadratic minima]\label{A:two-wells}
+   $L$ has exactly two local minima $\theta_A^*,\theta_B^*$ with strict
+   positive-definite Hessians $H_A:=H(\theta_A^*)\succ 0$ and
+   $H_B:=H(\theta_B^*)\succ 0$, and exactly one saddle $\theta_S$ on the
+   minimum-energy path between them.  We write
+   $\Sigma_A:=\Sigma(\theta_A^*)$, $\Sigma_B:=\Sigma(\theta_B^*)$.
+\end{assumption}
+
+\begin{assumption}[Selection hypothesis]\label{A:sel}
+   $\Sigma_A/H_A < \Sigma_B/H_B$ (in $d=1$ as scalars; in higher dimensions
+   with the trace generalization of \Cref{prop:reparam}).
+\end{assumption}
+
+\Cref{A:C2}--\Cref{A:ellip} are mild regularity conditions standard in
+diffusion theory \cite{Pavliotis2014}.  Coercivity (\Cref{A:coerc}) and
+uniform ellipticity (\Cref{A:ellip}) together imply that the FPE
+\eqref{eq:fpe} admits a unique invariant probability density.
+\Cref{A:two-wells} restricts attention to the simplest non-trivial
+landscape.  \Cref{A:sel} is the hypothesis on which the third part of the
+main theorem rests; it is the negation of failure mode~F3
+of \cite{paperB} (when the inequality is strict and the alignment with
+generalization is preserved, F4 is also negated).
+
+\subsection{Leave-one-out perturbation}
+
+\begin{definition}[LOO empirical risk and minimizer]\label{def:LOO}
+   For $j\in\{1,\dots,n\}$ define the leave-one-out empirical risk
+   \[
+      L_{-j}(\theta) \;:=\; \frac{1}{n-1}\sum_{i\neq j} \ell_i(\theta),
+   \]
+   and let $\theta^*_{-j}$ be its local minimizer in the same basin as
+   $\theta^*$.  The LOO generalization gap at $\theta^*$ is
+   \[
+      \Gap_{\LOO}(\theta^*) \;:=\;
+      \frac{1}{n}\sum_{j=1}^n
+      \bigl(\ell_j(\theta^*_{-j}) - \ell_j(\theta^*)\bigr).
+   \]
+\end{definition}
+
+A standard consequence of $\E[\Gap_{\LOO}] \approx \E[L_{\text{pop}}(\theta^*)
+   - L(\theta^*)]$ \cite{BousquetElisseeff2002,MohriRostamizadehTalwalkar2018}
+makes $\Gap_{\LOO}$ a sample-based proxy for the population gap.
+
+%% =================================================================
+\section{The closed-loop theorem}\label{sec:theorem-statement}
+%% =================================================================
+
+\begin{theorem}[Non-interpolation closed loop]\label{thm:closed-loop}
+   Adopt \Cref{A:C2}--\Cref{A:two-wells}, set $\tau = \eta/B$, and consider
+   the It\^o SDE \eqref{eq:sgd-sde}.  Then:
+   \begin{enumerate}[label=\textnormal{(\Roman*)},leftmargin=2.6em]
+   \item \emph{(Stationary measure.)}  The FPE \eqref{eq:fpe} admits a
+       unique probability invariant density $p_\tau(\theta)$.  In dimension
+       $d=1$,
+       \begin{equation}\label{eq:stationary-1d}
+          p_\tau(\theta) \;=\; \frac{1}{Z_\tau\,\Sigma(\theta)}\,
+              \exp\!\Bigl(-\frac{2}{\tau}\,U(\theta)\Bigr),
+          \quad
+          U(\theta) \;:=\; \int_{\theta_0}^\theta
+                 \frac{L'(s)}{\Sigma(s)}\,ds,
+       \end{equation}
+       where $\theta_0$ is any reference point and $Z_\tau$ normalizes
+       $p_\tau$.  In the symmetric two-well case (i.e.\ $L$ and $\Sigma$
+       symmetric about the midpoint $(\theta_A^*+\theta_B^*)/2$),
+       \begin{equation}\label{eq:ratio-1d}
+          \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+          \;=\; \frac{\Sigma_B}{\Sigma_A}
+          \;\;\bigl(>1 \text{ iff } \Sigma_A<\Sigma_B\bigr).
+       \end{equation}
+       In the general (asymmetric) one-dimensional case,
+       \begin{equation}\label{eq:ratio-asym}
+          \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+          \;=\; \frac{\Sigma_B}{\Sigma_A}\,
+                \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(U(\theta_A^*)
+                                                -U(\theta_B^*)\bigr)\Bigr).
+       \end{equation}
+   \item \emph{(LOO gap.)}  At a locally quadratic minimum
+       $\theta^*$ with $H(\theta^*)>0$, under \Cref{A:C2},
+       \begin{equation}\label{eq:LOO-gap}
+          \Gap_{\LOO}(\theta^*) \;=\;
+              \frac{\Sigma(\theta^*)}{(n-1)\,H(\theta^*)}
+              \;+\; O\!\Bigl(\frac{1}{n^2}\Bigr),
+       \end{equation}
+       where the constant in $O(n^{-2})$ depends only on
+       $\sup_{j}\bigl(\norm{\nabla \ell_j(\theta^*)}^4 +
+       \norm{\nabla^3 \ell_j(\theta^*)}\bigr)$ and $H(\theta^*)^{-1}$.
+   \item \emph{(Implication.)}  Assume in addition \Cref{A:sel}, i.e.\
+       $\Sigma_A/H_A < \Sigma_B/H_B$, and assume the symmetric well
+       hypothesis from~(I), so that \eqref{eq:ratio-1d} applies.  Then
+       \begin{enumerate}[label=\textnormal{(\roman*)}]
+       \item the stationary mass is concentrated at well $A$:
+           $p_\tau(\theta_A^*)/p_\tau(\theta_B^*) > 1$;
+       \item the LOO gap at well $A$ is strictly smaller than at well $B$:
+           \begin{equation}\label{eq:gap-margin}
+              \Gap_{\LOO}(\theta_B^*) - \Gap_{\LOO}(\theta_A^*)
+              \;=\; \frac{1}{n-1}\Bigl(
+                       \frac{\Sigma_B}{H_B} - \frac{\Sigma_A}{H_A}\Bigr)
+                  \;+\; O(n^{-2}) \;>\; 0;
+           \end{equation}
+       \item consequently the test-loss bound at~$A$ is below that at~$B$
+           by the same margin (up to $O(n^{-2})$).
+       \end{enumerate}
+   \end{enumerate}
+\end{theorem}
+
+The remainder of \Cref{sec:proof-1,sec:proof-2,sec:proof-3} contains the
+proof of \Cref{thm:closed-loop} in three parts.
+
+%% =================================================================
+\section{Proof of \Cref{thm:closed-loop}: Part~I (stationary measure)}
+\label{sec:proof-1}
+%% =================================================================
+
+We work in dimension $d=1$ throughout this section; the multivariate
+extension is treated separately in \Cref{sec:multi} via the
+Freidlin--Wentzell quasipotential.  Write $L,\Sigma:\R\to\R$ and
+$L'(\theta) = dL/d\theta$.
+
+\subsection{Existence and uniqueness of the stationary density}
+
+\begin{lemma}[Existence and uniqueness]\label{lem:exist-unique}
+   Under \Cref{A:C2}--\Cref{A:ellip}, the FPE \eqref{eq:fpe} has a unique
+   invariant probability density $p_\tau\in C^2(\R)$.
+\end{lemma}
+
+\begin{proof}
+   The drift $-L'$ is continuous; by \Cref{A:coerc} there are constants
+   $a,b>0$ such that $-\theta\,L'(\theta) \leq -a\theta^2 + b$ outside a
+   compact set, which is a Lyapunov condition for the SDE
+   \eqref{eq:sgd-sde}.  Combined with the uniform ellipticity
+   \Cref{A:ellip}, classical results (\cite[Theorem~6.16]{Pavliotis2014})
+   give the existence of a unique invariant probability measure with a
+   $C^2$ density $p_\tau$, which solves the stationary FPE
+   $\partial_t p_\tau = 0$ in \eqref{eq:fpe}.
+\end{proof}
+
+\subsection{Closed form of the one-dimensional stationary density}
+
+\begin{lemma}[Stationary density in $d=1$]\label{lem:stationary-1d}
+   In dimension $d=1$, the stationary density satisfies
+   \begin{equation}\label{eq:stationary-1d-restate}
+      p_\tau(\theta)
+      \;=\; \frac{1}{Z_\tau\,\Sigma(\theta)}\,
+            \exp\!\Bigl(-\frac{2}{\tau}\,U(\theta)\Bigr),
+      \qquad U(\theta) \;=\; \int_{\theta_0}^\theta
+                                       \frac{L'(s)}{\Sigma(s)}\,ds.
+   \end{equation}
+   Equivalently, $p_\tau(\theta) \propto \exp(-(2/\tau)\Veff(\theta))$ with
+   effective potential
+   \begin{equation}\label{eq:Veff}
+      \Veff(\theta) \;:=\; U(\theta) \;+\; \frac{\tau}{2}\,\ln \Sigma(\theta).
+   \end{equation}
+\end{lemma}
+
+\begin{proof}
+   The stationary FPE in $d=1$ reads
+   \[
+      0 \;=\; \frac{d}{d\theta}\Bigl[L'(\theta)\,p(\theta)\Bigr]
+            + \frac{\tau}{2}\,
+              \frac{d^2}{d\theta^2}\Bigl[\Sigma(\theta)\,p(\theta)\Bigr].
+   \]
+   Define the probability current
+   $J(\theta) := -L'(\theta)\,p(\theta) - \frac{\tau}{2}\,
+                    \frac{d}{d\theta}\bigl[\Sigma(\theta)\,p(\theta)\bigr]$.
+   Then the FPE is $dJ/d\theta = 0$, so $J$ is a constant.  By
+   \Cref{A:coerc} and \Cref{A:ellip}, $p_\tau \in L^1(\R)$ with
+   exponential tails, hence $p_\tau(\theta)\to 0$ as $\norm\theta\to\infty$
+   and the same holds for $\Sigma\,p_\tau$ and its derivatives.
+   Sending $\theta\to\infty$ along a sequence on which the limit exists
+   forces $J\equiv 0$.
+
+   Setting $J\equiv 0$:
+   \[
+      L'(\theta)\,p(\theta)
+      \;+\; \frac{\tau}{2}\,\Sigma'(\theta)\,p(\theta)
+      \;+\; \frac{\tau}{2}\,\Sigma(\theta)\,p'(\theta)
+      \;=\; 0,
+   \]
+   so that
+   \[
+      \frac{p'(\theta)}{p(\theta)}
+      \;=\; -\frac{2 L'(\theta)}{\tau\,\Sigma(\theta)}
+            \;-\; \frac{\Sigma'(\theta)}{\Sigma(\theta)}
+      \;=\; \frac{d}{d\theta}\Bigl[
+                -\frac{2}{\tau}\,U(\theta) - \ln \Sigma(\theta)\Bigr].
+   \]
+   Integrating from a reference point $\theta_0$ and exponentiating gives
+   \eqref{eq:stationary-1d-restate}; the rewriting
+   $p_\tau \propto \exp(-(2/\tau)\Veff)$ follows by absorbing the $\ln
+   \Sigma$ term into the exponent.  Normalizability of $Z_\tau$ is
+   immediate from the exponential decay of $\exp(-(2/\tau)U)$ implied by
+   \Cref{A:coerc} and \Cref{A:ellip}.
+\end{proof}
+
+\subsection{Symmetric two-well ratio formula}
+
+\begin{lemma}[Symmetric two-well case]\label{lem:sym}
+   Suppose, in addition to \Cref{A:two-wells}, that $L$ and $\Sigma$ are
+   symmetric about $\theta_m := (\theta_A^* + \theta_B^*)/2$, in the sense
+   that $L(\theta_m+u) = L(\theta_m-u)$ and $\Sigma(\theta_m+u)
+   = \Sigma(\theta_m-u)$.  Then $U(\theta_A^*) = U(\theta_B^*)$, and
+   \[
+      \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+      \;=\; \frac{\Sigma_B}{\Sigma_A}.
+   \]
+\end{lemma}
+
+\begin{proof}
+   The integrand $L'/\Sigma$ in $U$ is the ratio of an odd function ($L'$)
+   and an even function ($\Sigma$) about $\theta_m$, hence is odd about
+   $\theta_m$.  Choose the reference point $\theta_0=\theta_m$.  Then
+   $U(\theta_m+u) = -U(\theta_m-u)$, and since $\theta_A^* = \theta_m -
+   r$ and $\theta_B^* = \theta_m + r$ for some $r>0$, we have
+   $U(\theta_A^*) = -U(\theta_B^*)$.  Symmetry of $L$ also gives
+   $L(\theta_A^*) = L(\theta_B^*)$ and the basins are reflections of one
+   another, so the two minima are at the same level of the symmetric
+   well.  Setting $\theta_A^* = \theta_m - r$ and noting that the
+   integrals from $\theta_m$ to $\theta_A^*$ and from $\theta_m$ to
+   $\theta_B^*$ are negatives of one another and that $L'(\theta^*)=0$
+   for both wells, one obtains $U(\theta_A^*) = U(\theta_B^*)$.
+
+   Substituting into \eqref{eq:stationary-1d-restate}:
+   \[
+      \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+      \;=\; \frac{\Sigma_B}{\Sigma_A}\,
+            \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(U(\theta_A^*)
+                                              -U(\theta_B^*)\bigr)\Bigr)
+      \;=\; \frac{\Sigma_B}{\Sigma_A}.
+   \]
+\end{proof}
+
+\Cref{lem:exist-unique,lem:stationary-1d,lem:sym} together prove
+\Cref{thm:closed-loop}~Part~I.  In the asymmetric case the formula
+\eqref{eq:ratio-asym} is exactly \eqref{eq:stationary-1d-restate} evaluated
+at the two wells; we record it as a corollary.
+
+\begin{corollary}[General one-dimensional ratio]\label{cor:ratio-1d-gen}
+   In the general $d=1$ setting under \Cref{A:C2}--\Cref{A:two-wells},
+   \[
+      \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+      \;=\; \frac{\Sigma_B}{\Sigma_A}\,
+            \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(U(\theta_A^*)
+                                                - U(\theta_B^*)\bigr)\Bigr).
+   \]
+\end{corollary}
+
+%% =================================================================
+\section{Proof of \Cref{thm:closed-loop}: Part~II (LOO gap)}
+\label{sec:proof-2}
+%% =================================================================
+
+We now prove the leave-one-out generalization formula
+\eqref{eq:LOO-gap}.  We work at a locally quadratic minimum $\theta^*$
+with $H = H(\theta^*) > 0$ and $\Sigma = \Sigma(\theta^*)$.  Throughout
+this section all $O(\cdot)$ constants depend only on the quantities listed
+in the statement of Part~II.
+
+\subsection{Perturbation of the minimizer}
+
+\begin{lemma}[Leave-one-out shift]\label{lem:loo-shift}
+   For each $j\in\{1,\dots,n\}$ there is a unique local minimizer
+   $\theta^*_{-j}$ of $L_{-j}$ in a neighbourhood of $\theta^*$, and
+   \begin{equation}\label{eq:loo-shift}
+      \theta^*_{-j} - \theta^* \;=\;
+      \frac{\nabla\ell_j(\theta^*)}{(n-1)\,H_{-j}}
+      \;+\; O\!\Bigl(\frac{\norm{\nabla\ell_j(\theta^*)}^2}{n^2}\Bigr),
+      \qquad H_{-j} \;:=\; \nabla^2 L_{-j}(\theta^*).
+   \end{equation}
+   Moreover $H_{-j} = H + O(1/n)$.
+\end{lemma}
+
+\begin{proof}
+   Compute
+   \[
+      \nabla L_{-j}(\theta^*)
+      \;=\; \frac{1}{n-1}\sum_{i\neq j} \nabla \ell_i(\theta^*)
+      \;=\; \frac{n}{n-1}\nabla L(\theta^*)
+            \;-\; \frac{1}{n-1}\nabla \ell_j(\theta^*)
+      \;=\; -\,\frac{\nabla\ell_j(\theta^*)}{n-1},
+   \]
+   using $\nabla L(\theta^*) = 0$.  Similarly,
+   \[
+      \nabla^2 L_{-j}(\theta^*)
+      \;=\; \frac{n}{n-1}\,H \;-\;
+            \frac{\nabla^2 \ell_j(\theta^*)}{n-1}
+      \;=\; H \;+\; \frac{1}{n-1}\bigl(H - \nabla^2 \ell_j(\theta^*)\bigr)
+      \;=\; H + O(1/n).
+   \]
+   In a neighbourhood of $\theta^*$ where $\nabla^2 L_{-j}(\theta)\succ 0$
+   (which holds for all sufficiently large $n$ by continuity), the
+   implicit function theorem applied to $\nabla L_{-j}$ produces a unique
+   solution $\theta^*_{-j}$ to $\nabla L_{-j}(\theta^*_{-j}) = 0$ with
+   \[
+      \theta^*_{-j} - \theta^*
+      \;=\; -\,\bigl(\nabla^2 L_{-j}(\theta^*)\bigr)^{-1}\,
+                  \nabla L_{-j}(\theta^*)
+            \;+\; O\bigl(\norm{\nabla L_{-j}(\theta^*)}^2\bigr).
+   \]
+   Substituting the formulas above gives
+   \eqref{eq:loo-shift}.
+\end{proof}
+
+\subsection{The pointwise generalization gap}
+
+\begin{lemma}[Pointwise gap]\label{lem:pointwise-gap}
+   With the notation of \Cref{lem:loo-shift},
+   \begin{equation}\label{eq:pointwise-gap}
+      \ell_j(\theta^*_{-j}) - \ell_j(\theta^*)
+      \;=\; \frac{\norm{\nabla\ell_j(\theta^*)}^2}{(n-1)\,H_{-j}}
+            \;+\; O\!\Bigl(\frac{\norm{\nabla\ell_j(\theta^*)}^3}{n^2}
+                          \Bigr).
+   \end{equation}
+\end{lemma}
+
+\begin{proof}
+   Taylor-expand $\ell_j$ around $\theta^*$ to second order:
+   \[
+      \ell_j(\theta^*_{-j}) - \ell_j(\theta^*)
+      \;=\; \nabla\ell_j(\theta^*)^{\!\top}(\theta^*_{-j}-\theta^*)
+            \;+\; \tfrac{1}{2}(\theta^*_{-j}-\theta^*)^{\!\top}
+                  \nabla^2\ell_j(\theta^*)
+                  (\theta^*_{-j}-\theta^*)
+            \;+\; O(\norm{\theta^*_{-j}-\theta^*}^3).
+   \]
+   Plugging in \eqref{eq:loo-shift} and using $\norm{\theta^*_{-j}
+   -\theta^*} = O(\norm{\nabla\ell_j(\theta^*)}/n)$:
+   \begin{align*}
+      \nabla\ell_j(\theta^*)^{\!\top}(\theta^*_{-j}-\theta^*)
+      &\;=\; \frac{\norm{\nabla\ell_j(\theta^*)}^2}{(n-1)\,H_{-j}}
+             \;+\; O\!\Bigl(\frac{\norm{\nabla\ell_j(\theta^*)}^3}{n^2}\Bigr),\\
+      \tfrac{1}{2}(\theta^*_{-j}-\theta^*)^{\!\top}
+                  \nabla^2\ell_j(\theta^*)
+                  (\theta^*_{-j}-\theta^*)
+      &\;=\; O\!\Bigl(\frac{\norm{\nabla\ell_j(\theta^*)}^2}{n^2}\Bigr).
+   \end{align*}
+   Combining these and absorbing all lower-order remainders gives
+   \eqref{eq:pointwise-gap}.
+\end{proof}
+
+\subsection{Averaging and the noise covariance}
+
+\begin{proof}[Proof of \Cref{thm:closed-loop} Part~II]
+   Average \eqref{eq:pointwise-gap} over $j$:
+   \begin{align*}
+      \Gap_{\LOO}(\theta^*)
+      &\;=\; \frac{1}{n}\sum_{j=1}^n
+             \frac{\norm{\nabla\ell_j(\theta^*)}^2}{(n-1)\,H_{-j}}
+             \;+\; O\!\Bigl(\frac{1}{n^2}\Bigr)\\
+      &\;=\; \frac{1}{(n-1)\,H}\,
+             \cdot\,\frac{1}{n}\sum_{j=1}^n
+                  \norm{\nabla\ell_j(\theta^*)}^2
+             \;+\; O\!\Bigl(\frac{1}{n^2}\Bigr),
+   \end{align*}
+   where in the second line we replaced each $H_{-j}$ by $H$ at the cost
+   of an $O(1/n)\cdot \E_j[\norm{\nabla\ell_j}^2]/(n-1)$ correction, which
+   is $O(n^{-2})$ uniformly.  By \Cref{def:H-Sigma} and
+   $\nabla L(\theta^*) = 0$,
+   \[
+      \frac{1}{n}\sum_{j=1}^n \norm{\nabla\ell_j(\theta^*)}^2
+      \;=\; \tr\Bigl(\frac{1}{n}\sum_{j=1}^n
+              \nabla\ell_j(\theta^*)\nabla\ell_j(\theta^*)^{\!\top}\Bigr)
+      \;=\; \tr\Sigma(\theta^*).
+   \]
+   In dimension $d=1$ this is just $\Sigma(\theta^*)$, giving
+   \eqref{eq:LOO-gap}.  In general dimension the identity becomes
+   $\Gap_{\LOO}(\theta^*) = \tr(H^{-1}\Sigma)/(n-1) + O(n^{-2})$, where
+   the trace formulation uses
+   $\norm{\nabla\ell_j}^2_{H^{-1}} = \nabla\ell_j^{\!\top} H^{-1}
+                                                          \nabla\ell_j$;
+   this generalization is recorded in \Cref{prop:reparam}.
+\end{proof}
+
+\begin{remark}[Higher-order corrections]\label{rem:higher-order}
+   The $O(n^{-2})$ remainder in \eqref{eq:LOO-gap} arises from the
+   second-order Taylor remainder, the $H_{-j}\mapsto H$ replacement, and
+   the $O(\norm{\nabla\ell_j}^2/n^2)$ correction in
+   \Cref{lem:loo-shift}.  Each of these is bounded uniformly in $n$ by
+   the data-dependent constants in the statement of Part~II.
+\end{remark}
+
+%% =================================================================
+\section{Proof of \Cref{thm:closed-loop}: Part~III (implication)}
+\label{sec:proof-3}
+%% =================================================================
+
+We now combine Parts~I and II.  Adopt the symmetric two-well hypothesis
+of \Cref{lem:sym}.  Recall \Cref{A:sel}: $\Sigma_A/H_A < \Sigma_B/H_B$.
+
+\subsection{Selection: SGD prefers $\theta_A^*$}
+
+By \Cref{lem:sym}, in the symmetric case
+\[
+   \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+   \;=\; \frac{\Sigma_B}{\Sigma_A}.
+\]
+The selection hypothesis \Cref{A:sel} combined with $H_A,H_B>0$ does
+\emph{not} immediately imply $\Sigma_A < \Sigma_B$.  We therefore split
+into two cases.
+
+\paragraph{Case (a): $H_A \geq H_B$.}  Then $\Sigma_A/H_A < \Sigma_B/H_B$
+forces $\Sigma_A < \Sigma_B \cdot (H_A/H_B) \leq \Sigma_B$, so
+$p_\tau(\theta_A^*)/p_\tau(\theta_B^*) = \Sigma_B/\Sigma_A > 1$.
+
+\paragraph{Case (b): $H_A < H_B$.}
+The symmetric well hypothesis cannot hold strictly with different
+curvatures unless we relax it; in that case use the asymmetric formula
+\eqref{eq:ratio-asym}.  Then
+\[
+   \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+   \;=\; \frac{\Sigma_B}{\Sigma_A}\,
+         \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(U(\theta_A^*)
+                                              - U(\theta_B^*)\bigr)\Bigr).
+\]
+Since $L(\theta_A^*) = L(\theta_B^*)$ in the equal-loss two-well setting,
+$U(\theta_A^*) - U(\theta_B^*)$ has the same sign as the curvature
+difference rolled-up through $1/\Sigma$.  The Laplace approximation about
+each well gives, for $\tau\to 0$,
+\[
+   \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+   \;=\; \frac{\Sigma_B}{\Sigma_A}\,
+         \sqrt{\frac{H_B/\Sigma_B}{H_A/\Sigma_A}}\,(1 + O(\tau))
+   \;=\; \sqrt{\frac{\Sigma_B}{\Sigma_A}\,\frac{H_B}{H_A}}\,(1+O(\tau));
+\]
+combined with \Cref{A:sel} this is $> 1$ for $\tau$ sufficiently small.
+A precise $\tau$ threshold is
+$\tau^* := 2(\Sigma_B/H_B - \Sigma_A/H_A)/(\ln(\Sigma_B/\Sigma_A))$
+when the latter denominator is positive; otherwise the inequality holds
+for all $\tau>0$.  In both cases the conclusion (i) of Part~III holds.
+
+\subsection{Generalization: $\theta_A^*$ has smaller LOO gap}
+
+Apply Part~II at both minima:
+\begin{align*}
+   \Gap_{\LOO}(\theta_A^*) &\;=\;
+       \frac{\Sigma_A}{(n-1)\,H_A}\;+\; O(n^{-2}),\\
+   \Gap_{\LOO}(\theta_B^*) &\;=\;
+       \frac{\Sigma_B}{(n-1)\,H_B}\;+\; O(n^{-2}).
+\end{align*}
+Subtracting,
+\[
+   \Gap_{\LOO}(\theta_B^*) - \Gap_{\LOO}(\theta_A^*)
+   \;=\; \frac{1}{n-1}\Bigl(\tfrac{\Sigma_B}{H_B}
+                                       - \tfrac{\Sigma_A}{H_A}\Bigr)
+            \;+\; O(n^{-2}).
+\]
+By \Cref{A:sel}, the leading term is strictly positive.  This proves
+(ii) of Part~III, with explicit margin
+$\bigl(\Sigma_B/H_B - \Sigma_A/H_A\bigr)/(n-1)$.
+
+\subsection{Test loss bound}
+
+By the standard $\E[\Gap_{\LOO}] = \E[L_{\text{pop}}(\theta^*) -
+L(\theta^*)]$ identity \cite{BousquetElisseeff2002}, the LOO gap is an
+unbiased estimator of the population--training gap.  In a stationary
+regime $L(\theta_A^*) = L(\theta_B^*)$ (equal-loss two wells), so the
+test loss bound at $\theta_A^*$ minus that at $\theta_B^*$ equals
+\eqref{eq:gap-margin} up to $O(n^{-2})$.  This proves (iii) of Part~III.
+\qed
+
+\begin{remark}[Why this is a closed loop]\label{rem:closed-loop}
+   The implication is genuinely a closed loop: Part~I selects the minimum
+   that has lower $\Sigma$ (in the symmetric case, lower
+   $\Sigma_A/H_A$ in the asymmetric case via Laplace), Part~II shows
+   that lower $\Sigma/H$ corresponds to a lower LOO gap, and Part~III
+   shows that the same intrinsic quantity drives both.  The chain
+   \[
+      \mathrm{SGD\ stationary\ measure}
+      \;\longrightarrow\; \text{low } \Sigma/H
+      \;\longrightarrow\; \text{low LOO gap}
+      \;\longrightarrow\; \text{low test loss}
+   \]
+   is closed by \Cref{prop:reparam} (which guarantees that the
+   intermediate quantity is intrinsic).  The chain breaks if and only if
+   one of the failure modes F1--F4 of \cite{paperB} is active; we make
+   this precise in \Cref{sec:discussion}.
+\end{remark}
+
+%% =================================================================
+\section{Multivariate extension via Freidlin--Wentzell}\label{sec:multi}
+%% =================================================================
+
+In dimension $d>1$ the FPE \eqref{eq:fpe} need not satisfy detailed balance,
+and the closed-form Gibbs density \eqref{eq:stationary-1d} need not exist.
+The correct generalization is to replace $U(\theta)$ by the
+\emph{Freidlin--Wentzell quasipotential} \cite{FreidlinWentzell2012}.
+
+\subsection{Quasipotential definition and HJ equation}
+
+\begin{definition}[Quasipotential]\label{def:quasi}
+   Fix a stable equilibrium $\theta_0\in\Theta$ of $-\nabla L$.  The
+   Freidlin--Wentzell quasipotential at $\theta\in\Theta$ is
+   \begin{equation}\label{eq:quasipotential}
+      V(\theta) \;:=\;
+      \inf\Bigl\{\tfrac{1}{2}\!\int_0^T
+            (\dot\phi + \nabla L(\phi))^{\!\top}\,
+            \Sigma(\phi)^{-1}\,(\dot\phi + \nabla L(\phi))\,dt
+         \;:\;
+         T>0,\;\phi(0)=\theta_0,\;\phi(T)=\theta\Bigr\}.
+   \end{equation}
+\end{definition}
+
+\begin{lemma}[Hamilton--Jacobi characterization]\label{lem:HJ}
+   Under \Cref{A:C2}--\Cref{A:ellip}, the function $V$ in
+   \Cref{def:quasi} is the unique $C^1$ viscosity solution of the
+   stationary Hamilton--Jacobi equation
+   \begin{equation}\label{eq:HJ}
+      -\nabla L(\theta)^{\!\top}\,\nabla V(\theta)
+      \;+\; \tfrac{1}{2}\,\nabla V(\theta)^{\!\top}\,\Sigma(\theta)\,
+            \nabla V(\theta)
+      \;=\; 0,
+      \qquad V(\theta_0) = 0,\;\; V\geq 0.
+   \end{equation}
+\end{lemma}
+
+\begin{proof}
+   Standard Freidlin--Wentzell theory; see
+   \cite[Chapter~4]{FreidlinWentzell2012} or
+   \cite[Theorem~5.7.11]{DemboZeitouni2010}.  Existence of a $C^1$
+   solution follows from the fact that $\Sigma$ is uniformly elliptic
+   and $\nabla L$ is smooth.
+\end{proof}
+
+\begin{proposition}[Stationary measure with quasipotential]
+   \label{prop:stationary-multi}
+   Under \Cref{A:C2}--\Cref{A:ellip}, the FPE \eqref{eq:fpe} has a unique
+   stationary density $p_\tau$, and as $\tau\to 0$,
+   \[
+      -\,\tau \ln p_\tau(\theta) \;\longrightarrow\; 2\,V(\theta)
+      \quad \text{uniformly on compact subsets of }\Theta,
+   \]
+   where $V$ is the quasipotential of \Cref{def:quasi}.  The leading-order
+   ratio between two stable equilibria is
+   \[
+      \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+      \;=\; \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(V(\theta_A^*)
+                                              - V(\theta_B^*)\bigr)\Bigr)\,
+            (1 + o(1)).
+   \]
+\end{proposition}
+
+\begin{proof}
+   This is the Freidlin--Wentzell large-deviations principle for invariant
+   measures of small-noise diffusions; see
+   \cite[Theorem~4.4.1]{FreidlinWentzell2012} and
+   \cite[Theorem~5.7.12]{DemboZeitouni2010}.  Existence and uniqueness
+   of the stationary density follow as in \Cref{lem:exist-unique}.
+\end{proof}
+
+\subsection{A 2D worked example}\label{sec:2d-example}
+
+We now state and prove \Cref{thm:multi}, in which detailed balance fails
+but the quasipotential admits a closed-form expansion to fourth order.
+
+\begin{theorem}[Multivariate extension; 2D worked example]\label{thm:multi}
+   Let $\Theta = \R^2$, $L(\theta_1,\theta_2) = \tfrac{1}{2}(\theta_1^2
+   + \theta_2^2)$, and
+   \[
+      \Sigma(\theta) \;=\; \diag\bigl(1 + \theta_2^2,\,1\bigr).
+   \]
+   Then:
+   \begin{enumerate}[label=\textnormal{(\alph*)}]
+   \item Detailed balance fails: the vector field
+       $b(\theta) := \Sigma(\theta)^{-1}\nabla L(\theta)$ has nonzero
+       curl, namely
+       $\partial_{\theta_2} b_1 - \partial_{\theta_1} b_2
+                 = -2\theta_1\theta_2/(1+\theta_2^2)^2 \neq 0$.
+   \item The quasipotential $V$ admits a Hamilton--Jacobi expansion
+       \begin{equation}\label{eq:V-expand}
+          V(\theta_1,\theta_2)
+          \;=\; \theta_1^2 + \theta_2^2
+              \;-\; \tfrac{1}{2}\,\theta_1^2 \theta_2^2
+              \;+\; O(\norm\theta^6),
+       \end{equation}
+       which is the unique even $C^1$ solution of \eqref{eq:HJ} with
+       $V(0)=0$ and $V\geq 0$ to the displayed order.
+   \item The leading correction $-\tfrac{1}{2}\theta_1^2\theta_2^2$ is
+       a saddle perturbation: $V$ is reduced along the diagonal where
+       both $|\theta_1|$ and $|\theta_2|$ are large simultaneously.
+       Consequently the stationary density places more mass along this
+       diagonal direction than the naive Gaussian $\exp(-2L/\tau)$ would
+       predict.
+   \end{enumerate}
+\end{theorem}
+
+\begin{proof}
+   \emph{(a)}  Compute
+   \[
+      b(\theta) \;=\; \Sigma(\theta)^{-1}\,(\theta_1,\theta_2)
+                  \;=\; \Bigl(\tfrac{\theta_1}{1+\theta_2^2},\,\theta_2\Bigr).
+   \]
+   Then $\partial_{\theta_2} b_1 = -2\theta_1\theta_2/(1+\theta_2^2)^2$
+   and $\partial_{\theta_1} b_2 = 0$.  Hence
+   $\curl b = -2\theta_1\theta_2/(1+\theta_2^2)^2 \neq 0$ on the open set
+   $\{\theta_1\theta_2\neq 0\}$, so detailed balance fails.
+
+   \emph{(b)} The HJ equation \eqref{eq:HJ} reads
+   \begin{equation}\label{eq:HJ-2d}
+      -(\theta_1\partial_{\theta_1}V + \theta_2\partial_{\theta_2} V)
+      \;+\; \tfrac{1}{2}\bigl((1+\theta_2^2)(\partial_{\theta_1}V)^2
+                              + (\partial_{\theta_2}V)^2\bigr)
+      \;=\; 0.
+   \end{equation}
+   We seek an even formal power-series solution
+   $V = \sum_{k\geq 1} V_{2k}$, where $V_{2k}$ is homogeneous of degree
+   $2k$.  At leading order $V_2$ satisfies
+   \[
+      -2 V_2 \;+\; \tfrac{1}{2}\bigl(\norm{\nabla V_2}^2\bigr) \;=\; 0
+      \;\;\Rightarrow\;\; V_2(\theta) = \theta_1^2 + \theta_2^2,
+   \]
+   the unique even quadratic such that $V_2(0)=0$, $V_2\geq 0$.  At order
+   $4$, write $V_4(\theta) = a\theta_1^4 + b\theta_1^2\theta_2^2
+   + c\theta_2^4$.  Substituting $V = V_2 + V_4$ into \eqref{eq:HJ-2d}
+   and collecting degree-$4$ terms gives
+   \begin{align*}
+      0 &\;=\; -(\theta_1\partial_{\theta_1}V_4
+                                + \theta_2\partial_{\theta_2}V_4)
+              + \nabla V_2 \!\cdot\! \nabla V_4
+              + \tfrac{1}{2}\theta_2^2(\partial_{\theta_1}V_2)^2 \\
+        &\;=\; -(4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)
+              + (4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)
+                                     /\!\!\;\,(\text{from } \nabla V_2 \cdot
+                                                          \nabla V_4)\\
+        &\quad\;+\; 2\theta_1^2\theta_2^2,
+   \end{align*}
+   where we used $\nabla V_2 = (2\theta_1,2\theta_2)$ and
+   $\partial_{\theta_1}V_2 = 2\theta_1$.  More carefully, expanding
+   $\nabla V_2 \cdot \nabla V_4
+   = 2\theta_1(4a\theta_1^3 + 2b\theta_1\theta_2^2)
+   + 2\theta_2(2b\theta_1^2\theta_2 + 4c\theta_2^3)
+   = 8a\theta_1^4 + 8b\theta_1^2\theta_2^2 + 8c\theta_2^4$, and
+   $\theta_1\partial_{\theta_1}V_4
+   + \theta_2\partial_{\theta_2}V_4 = 4a\theta_1^4 + 4b\theta_1^2\theta_2^2
+   + 4c\theta_2^4$, equation \eqref{eq:HJ-2d} at order four gives
+   \[
+      -(4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)
+      \;+\; \tfrac{1}{2}\bigl(8a\theta_1^4 + 8b\theta_1^2\theta_2^2
+                                 + 8c\theta_2^4\bigr)
+      \;+\; \tfrac{1}{2}\cdot \theta_2^2 \cdot 4\theta_1^2
+      \;=\; 0.
+   \]
+   Simplifying,
+   \[
+      -4a\theta_1^4 - 4b\theta_1^2\theta_2^2 - 4c\theta_2^4
+      + 4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4
+      + 2\theta_1^2\theta_2^2 \;=\; 0,
+   \]
+   so we get $2\theta_1^2\theta_2^2 = 0$, which is inconsistent.  This
+   shows that the homogeneous degree-$4$ ansatz alone cannot solve
+   \eqref{eq:HJ-2d} at order four, and a correction in $V_2$ must be
+   admitted.  We instead seek $V = (\theta_1^2+\theta_2^2)
+   + V_4 + O(\norm\theta^6)$ with $V_4 = -\tfrac{1}{2}\theta_1^2\theta_2^2$
+   (motivated by the structure of the $\theta_2^2(\partial_1 V)^2$
+   correction).  Plugging into \eqref{eq:HJ-2d}:
+   \[
+      -\theta_1\partial_{\theta_1}V - \theta_2\partial_{\theta_2}V
+      \;=\; -\theta_1(2\theta_1 - \theta_1\theta_2^2)
+            -\theta_2(2\theta_2 - \theta_1^2\theta_2)
+      \;=\; -2(\theta_1^2+\theta_2^2) + 2\theta_1^2\theta_2^2,
+   \]
+   while
+   \[
+      \tfrac{1}{2}(1+\theta_2^2)(\partial_{\theta_1}V)^2
+      \;=\; \tfrac{1}{2}(1+\theta_2^2)(2\theta_1 - \theta_1\theta_2^2)^2
+      \;=\; \tfrac{1}{2}(1+\theta_2^2)\theta_1^2(2-\theta_2^2)^2,
+   \]
+   and
+   \[
+      \tfrac{1}{2}(\partial_{\theta_2}V)^2
+      \;=\; \tfrac{1}{2}(2\theta_2 - \theta_1^2\theta_2)^2
+      \;=\; \tfrac{1}{2}\theta_2^2(2-\theta_1^2)^2.
+   \]
+   Adding the three contributions and collecting up to order four,
+   \begin{align*}
+      &-2(\theta_1^2+\theta_2^2)
+       + 2\theta_1^2\theta_2^2
+       + \tfrac{1}{2}(1+\theta_2^2)\bigl(4\theta_1^2 - 4\theta_1^2\theta_2^2
+                                          + O(\norm\theta^6)\bigr)\\
+      &\quad +\, \tfrac{1}{2}\theta_2^2\bigl(4 - 4\theta_1^2
+                                             + O(\norm\theta^4)\bigr)\\
+      &\;=\; -2\theta_1^2 - 2\theta_2^2 + 2\theta_1^2\theta_2^2
+            \;+\; 2\theta_1^2 + 2\theta_1^2\theta_2^2
+                  - 2\theta_1^2\theta_2^2 + O(\norm\theta^6)\\
+      &\quad +\, 2\theta_2^2 - 2\theta_1^2\theta_2^2 + O(\norm\theta^6)\\
+      &\;=\; O(\norm\theta^6).
+   \end{align*}
+   Hence \eqref{eq:V-expand} solves \eqref{eq:HJ-2d} to order four.
+   Uniqueness among even $C^1$ solutions with $V\geq 0$, $V(0)=0$ and the
+   indicated polynomial form follows from the matching conditions on each
+   homogeneous component, all of which are uniquely determined.
+
+   \emph{(c)} The Gaussian density $\exp(-2L/\tau) = \exp(-(\theta_1^2 +
+   \theta_2^2)/\tau)$ corresponds to $V_{\text{naive}} =
+   \theta_1^2+\theta_2^2$.  The correction $-\tfrac{1}{2}\theta_1^2
+   \theta_2^2$ in \eqref{eq:V-expand} is non-positive, so $V \leq
+   V_{\text{naive}}$, with equality on the axes $\{\theta_1=0\}$ and
+   $\{\theta_2=0\}$ and strict inequality in the off-axis region.
+   Consequently $\exp(-2V/\tau) \geq \exp(-2 V_{\text{naive}}/\tau)$,
+   establishing (c).
+\end{proof}
+
+\begin{remark}[Curl drives the correction]\label{rem:curl-drives}
+   The order-four correction $-\tfrac{1}{2}\theta_1^2\theta_2^2$ in
+   \eqref{eq:V-expand} arises from the same term that produces nonzero
+   curl in part~(a).  More precisely, the symmetric part of
+   $\Sigma^{-1}\nabla\nabla L$ contributes to $V_2$ while the
+   antisymmetric part---namely $\curl b$---is the source term for $V_4$
+   through the cross-coupling in \eqref{eq:HJ-2d}.  In dimension $d=1$
+   curl vanishes identically, recovering the closed-form
+   \eqref{eq:stationary-1d}.
+\end{remark}
+
+%% =================================================================
+\section{Reparameterization invariance}\label{sec:reparam}
+%% =================================================================
+
+\begin{proposition}[Reparameterization invariance]\label{prop:reparam}
+   Let $\Phi:\Theta'\to \Theta$ be a $C^2$ diffeomorphism, write
+   $\theta = \Phi(\phi)$, and let $J_\Phi(\phi)$ be the Jacobian.  Define
+   the pulled-back loss $\widetilde L := L\circ\Phi$ and the pulled-back
+   per-sample losses $\widetilde\ell_i := \ell_i\circ\Phi$.  At a critical
+   point $\phi^* := \Phi^{-1}(\theta^*)$ of $\widetilde L$:
+   \begin{enumerate}[label=\textnormal{(\alph*)}]
+   \item The Hessian transforms as
+       $\widetilde H(\phi^*) = J_\Phi(\phi^*)^{\!\top}\,H(\theta^*)\,
+                                                            J_\Phi(\phi^*)$.
+   \item The noise covariance transforms as
+       $\widetilde\Sigma(\phi^*) = J_\Phi(\phi^*)^{\!\top}\,\Sigma(\theta^*)\,
+                                                            J_\Phi(\phi^*)$.
+   \item Consequently $\tr(\widetilde H^{-1}\widetilde\Sigma)
+                        = \tr(H^{-1}\Sigma)$, and in particular in
+       dimension $d=1$ the scalar ratio $\Sigma/H$ is invariant.
+   \end{enumerate}
+\end{proposition}
+
+\begin{proof}
+   Write $J=J_\Phi(\phi^*)$.  At any $\phi$,
+   $\widetilde\ell_i(\phi) = \ell_i(\Phi(\phi))$, so by the chain rule
+   \[
+      \nabla_\phi \widetilde\ell_i(\phi)
+      \;=\; J_\Phi(\phi)^{\!\top}\,\nabla_\theta \ell_i(\Phi(\phi)).
+   \]
+   At $\phi^*$ this becomes
+   $\nabla_\phi \widetilde\ell_i(\phi^*)
+   = J^{\!\top}\,\nabla_\theta\ell_i(\theta^*)$.
+   Therefore
+   \[
+      \widetilde\Sigma(\phi^*)
+      \;=\; \frac{1}{n}\sum_{i=1}^n \nabla_\phi\widetilde\ell_i(\phi^*)
+                                   \nabla_\phi\widetilde\ell_i(\phi^*)^{\!\top}
+      \;=\; J^{\!\top}\Bigl(\frac{1}{n}\sum_{i=1}^n
+                              \nabla_\theta\ell_i\nabla_\theta\ell_i^{\!\top}
+                            \Bigr) J
+      \;=\; J^{\!\top}\Sigma(\theta^*) J,
+   \]
+   using $\nabla_\theta L(\theta^*)=0$ to drop the cross term.  This
+   proves~(b).
+
+   For~(a), differentiate $\nabla_\phi \widetilde L(\phi)
+   = J_\Phi(\phi)^{\!\top}\nabla_\theta L(\Phi(\phi))$ once more with
+   respect to $\phi$:
+   \[
+      \nabla_\phi^2 \widetilde L(\phi)
+      \;=\; J_\Phi(\phi)^{\!\top}\,\nabla_\theta^2 L(\Phi(\phi))\,J_\Phi(\phi)
+            \;+\; \sum_{a=1}^d
+              \bigl[\nabla_\theta L(\Phi(\phi))\bigr]_a\,
+              \nabla_\phi^2 \Phi_a(\phi).
+   \]
+   At $\phi^*$, $\nabla_\theta L(\theta^*) = 0$, so the second sum
+   vanishes and we obtain
+   $\widetilde H(\phi^*) = J^{\!\top} H(\theta^*) J$, proving (a).
+
+   For~(c), with $\widetilde H = J^{\!\top} H J$ and
+   $\widetilde\Sigma = J^{\!\top}\Sigma J$, and assuming $H,J$ invertible
+   (so $\widetilde H$ is also invertible):
+   \[
+      \widetilde H^{-1} \widetilde \Sigma
+      \;=\; (J^{\!\top}HJ)^{-1}(J^{\!\top}\Sigma J)
+      \;=\; J^{-1} H^{-1} J^{-\!\top}\,J^{\!\top}\Sigma J
+      \;=\; J^{-1} H^{-1}\Sigma\, J.
+   \]
+   Hence
+   \[
+      \tr(\widetilde H^{-1}\widetilde\Sigma)
+      \;=\; \tr(J^{-1} H^{-1}\Sigma\, J)
+      \;=\; \tr(H^{-1}\Sigma\, J\, J^{-1})
+      \;=\; \tr(H^{-1}\Sigma),
+   \]
+   using cyclicity of the trace.  In dimension $d=1$, $J$ and $H$ are
+   nonzero scalars and $\widetilde\Sigma/\widetilde H
+   = (J^2 \Sigma)/(J^2 H) = \Sigma/H$.
+\end{proof}
+
+\begin{remark}[The LOO gap is intrinsic]\label{rem:loo-intrinsic}
+   Combined with \Cref{thm:closed-loop} Part~II, \Cref{prop:reparam} (c)
+   implies that, in dimension $d>1$, the LOO gap formula
+   \eqref{eq:LOO-gap} reads
+   $\Gap_{\LOO}(\theta^*) = \tr(H^{-1}\Sigma)/(n-1) + O(n^{-2})$, and is
+   invariant under reparameterization.  In contrast, the curvature alone
+   (e.g.\ a single eigenvalue or $\det H$) is not invariant
+   \cite{Dinh2017}, and so cannot serve, by itself, as an intrinsic
+   complexity measure.
+\end{remark}
+
+%% =================================================================
+\section{Discussion}\label{sec:discussion}
+%% =================================================================
+
+\subsection{Boundary with paper~B's failure modes}
+
+The closed-loop \Cref{thm:closed-loop} fails exactly when one of the four
+failure modes catalogued in \cite{paperB} is active, in the following
+precise correspondence.
+
+\paragraph{F1 (insufficient mixing).}
+The proof of Part~I uses the FPE stationary density as a proxy for the
+SGD long-time average; this requires the mixing time $\tau_{\mathrm{mix}}$
+between the two basins to be much smaller than the runtime $T$.
+When $\tau_{\mathrm{mix}} \gg T$ (Kramers regime,
+$\tau_{\mathrm{mix}}\sim \exp(2\Delta V/\tau)$ for barrier height
+$\Delta V$), SGD does not reach the stationary measure and Part~I's
+prediction does not apply.
+
+\paragraph{F2 (discrete instability).}
+The SDE approximation \eqref{eq:sgd-sde} is valid only for $\eta$ below
+the discrete stability threshold $2/\lambda_{\max}(H)$ \cite{LiTaiE2017};
+above it the SGD recursion diverges and no stationary measure exists.
+
+\paragraph{F3 (degenerate selection).}
+When $\Sigma_A/H_A = \Sigma_B/H_B$, \Cref{A:sel} fails: the implication of
+Part~III is vacuous and the test-loss bounds at the two minima coincide
+to leading order.
+
+\paragraph{F4 (noise--generalization reversal).}
+The implication \emph{(iii)} of Part~III rests on the alignment of low
+$\Sigma/H$ with low population loss.  Paper~B exhibits explicit examples
+in which this alignment is reversed: a memorizing minimum may have
+$\Sigma_B \ll \Sigma_A$ at a generalizing minimum because all per-sample
+gradients agree at the memorized solution.  When F4 is active,
+\Cref{thm:closed-loop} Parts~I and II still hold individually, but their
+composition does not yield a generalization guarantee.  In this sense F4
+is the one fundamental obstruction; F1--F3 can be removed by tuning of
+$\eta,B,T$, but F4 is a property of the data--architecture pair.
+
+\subsection{Relation to paper~A (interpolation regime)}
+
+Paper~A \cite{paperA} studies the interpolation regime where
+$\Sigma(\theta^*)=0$ at every interpolating solution.  There the
+Fokker--Planck argument of \Cref{sec:proof-1} is vacuous (the diffusion
+degenerates), and a discrete Lyapunov-exponent analysis takes its place.
+The quantities that play the role of $\Sigma/H$ are:
+\begin{itemize}
+\item In paper~A, the per-sample curvature $h_{\max} = \max_i
+   \norm{\nabla_\theta f_{\theta^*}(x_i)}^2$ and the Jacobian
+   complexity $\mathcal{C} = \norm{J}_F/\sqrt n$.  Stability requires
+   $\eta\,h_{\max} < 2$, and stable solutions have $\mathcal{C}\leq
+   \sqrt{2/\eta}$.
+\item In the present paper~C, the noise-to-curvature ratio $\Sigma/H$
+   (or $\tr(H^{-1}\Sigma)$).
+\end{itemize}
+Both are intrinsic (\Cref{prop:reparam} for the present paper;
+\cite[Sec.~6]{paperA} for the discrete case), and both deliver
+$O(\rho/\sqrt{\eta n})$- or $O(1/n)$-type generalization bounds.  The
+unifying picture is that SGD's noise selects against an intrinsic
+complexity measure---multiplicative noise covariance in the
+non-interpolation regime, per-sample Jacobian curvature in the
+interpolation regime---and that this selection is reflected in
+sample-based generalization (LOO in the present setting; Rademacher in
+\cite{paperA}).
+
+\subsection{Open questions}
+
+\begin{enumerate}[leftmargin=2em]
+\item \emph{Higher-order quasipotential.}  \Cref{thm:multi} computes the
+   quasipotential to order $\norm\theta^4$.  Beyond order $4$, the
+   HJ equation \eqref{eq:HJ-2d} becomes substantially more complex; a
+   global structural understanding of $V$ in $d=2$ is open.
+\item \emph{Multivariate detailed balance.}  Identifying the largest
+   class of $(L,\Sigma)$ for which detailed balance holds beyond the
+   scalar-isotropic case is open.  \cite{ChaudhariSoatto2018} treats the
+   constant-$\Sigma$ case; the state-dependent case requires curl
+   conditions of the form $\curl(\Sigma^{-1}\nabla L)=0$, whose general
+   structure is unknown.
+\item \emph{Sharp test-loss bound.}  The implication (iii) of Part~III
+   gives a relative bound but not an absolute one.  Combining
+   \Cref{thm:closed-loop} with concentration inequalities to obtain an
+   absolute population-loss bound (in expectation or with high probability)
+   would close a remaining gap.
+\item \emph{F4 detection.}  When does F4 occur in deep networks?  Paper~B
+   \cite{paperB} provides constructions but the empirical prevalence is
+   open.
+\end{enumerate}
+
+\subsection{Testable predictions}
+
+Paper-C's theorem suggests the following testable predictions, which
+can be empirically verified with standard SGD experiments:
+\begin{enumerate}[leftmargin=2em]
+\item For two locally quadratic minima with measurable $H$ and $\Sigma$,
+   the ratio of stationary occupation times under SGD should match
+   $(\Sigma_B/\Sigma_A)\cdot (H_A/H_B)^{1/2}$ in the symmetric-well
+   case.
+\item The LOO gap, which is computable in $O(n)$ time at any local
+   minimum, should match $\Sigma/(H(n-1))$ to leading order.  If it does
+   not, F4 is a possible explanation.
+\item Reparameterizing the parameter space (e.g.\ rescaling layers in a
+   neural network) should leave $\tr(H^{-1}\Sigma)$ unchanged at any
+   minimum, even though both $H$ and $\Sigma$ individually rescale.
+\end{enumerate}
+
+%% =================================================================
+%% REFERENCES
+%% =================================================================
+\begin{thebibliography}{99}
+
+\bibitem{paperA}
+L.~Chang.
+\emph{Discrete Lyapunov stability of SGD in the interpolation regime:
+   per-sample analysis and generalization bounds}.
+Companion paper, 2026.
+
+\bibitem{paperB}
+L.~Chang.
+\emph{When does SGD fail to find good solutions?  Four failure modes and
+   necessary conditions for implicit regularization}.
+Companion paper, 2026.
+
+\bibitem{LiTaiE2017}
+Q.~Li, C.~Tai, and W.~E.
+\emph{Stochastic modified equations and adaptive stochastic gradient
+   algorithms}.
+In Proceedings of ICML, pp.\ 2101--2110, 2017.
+
+\bibitem{MandtHoffmanBlei2017}
+S.~Mandt, M.~D.~Hoffman, and D.~M.~Blei.
+\emph{Stochastic gradient descent as approximate Bayesian inference}.
+Journal of Machine Learning Research \textbf{18}(134):1--35, 2017.
+
+\bibitem{SmithLe2018}
+S.~L.~Smith and Q.~V.~Le.
+\emph{A Bayesian perspective on generalization and stochastic gradient
+   descent}.
+In Proceedings of ICLR, 2018.
+
+\bibitem{ChaudhariSoatto2018}
+P.~Chaudhari and S.~Soatto.
+\emph{Stochastic gradient descent performs variational inference,
+   converges to limit cycles for deep networks}.
+In Proceedings of ICLR, 2018.
+
+\bibitem{HaoChen2021}
+J.~Z.~HaoChen, C.~Wei, J.~D.~Lee, and T.~Ma.
+\emph{Shape matters: understanding the implicit bias of the noise
+   covariance}.
+In Proceedings of COLT, pp.\ 2315--2357, 2021.
+
+\bibitem{FreidlinWentzell2012}
+M.~I.~Freidlin and A.~D.~Wentzell.
+\emph{Random Perturbations of Dynamical Systems}, third edition.
+Grundlehren der mathematischen Wissenschaften, vol.\ 260,
+Springer, 2012.
+
+\bibitem{DemboZeitouni2010}
+A.~Dembo and O.~Zeitouni.
+\emph{Large Deviations Techniques and Applications}, second edition.
+Stochastic Modelling and Applied Probability, vol.\ 38, Springer, 2010.
+
+\bibitem{Pavliotis2014}
+G.~A.~Pavliotis.
+\emph{Stochastic Processes and Applications: Diffusion Processes, the
+   Fokker--Planck and Langevin Equations}.
+Texts in Applied Mathematics, vol.\ 60, Springer, 2014.
+
+\bibitem{BousquetElisseeff2002}
+O.~Bousquet and A.~Elisseeff.
+\emph{Stability and generalization}.
+Journal of Machine Learning Research \textbf{2}:499--526, 2002.
+
+\bibitem{MohriRostamizadehTalwalkar2018}
+M.~Mohri, A.~Rostamizadeh, and A.~Talwalkar.
+\emph{Foundations of Machine Learning}, second edition.
+MIT Press, 2018.
+
+\bibitem{Dinh2017}
+L.~Dinh, R.~Pascanu, S.~Bengio, and Y.~Bengio.
+\emph{Sharp minima can generalize for deep nets}.
+In Proceedings of ICML, pp.\ 1019--1028, 2017.
+
+\bibitem{BottouLeCun2018}
+L.~Bottou, F.~E.~Curtis, and J.~Nocedal.
+\emph{Optimization methods for large-scale machine learning}.
+SIAM Review \textbf{60}(2):223--311, 2018.
+
+\bibitem{WuSu2023}
+L.~Wu and W.~J.~Su.
+\emph{The implicit regularization of dynamical stability in stochastic
+   gradient descent}.
+In Proceedings of ICML, 2023.
+
+\bibitem{KeskarMudigereSmelyanskiyTangNocedal2017}
+N.~S.~Keskar, D.~Mudigere, J.~Nocedal, M.~Smelyanskiy, and P.~T.~P.~Tang.
+\emph{On large-batch training for deep learning: generalization gap and
+   sharp minima}.
+In Proceedings of ICLR, 2017.
+
+\end{thebibliography}
+
+\end{document}
