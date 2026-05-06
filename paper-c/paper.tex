@@ -91,6 +91,9 @@ particular, the implication (iii) is reversed by failure mode~F4, and the
 interplay is made precise.
 \end{abstract}
 
+\noindent\textbf{MSC 2020:} 60H10 (primary); 62L20, 60F10, 68T07,
+49L25, 60J60, 65C05.
+
 %% =================================================================
 \section{Introduction}\label{sec:intro}
 %% =================================================================
@@ -114,7 +117,7 @@ where $\eta$ is the learning rate, $B$ is the batch size and
 $\Sigma(\theta)$ is the per-sample gradient covariance
 \cite{LiTaiE2017,SmithLe2018,MandtHoffmanBlei2017,ChaudhariSoatto2018}.  The
 multiplicative structure of $\Sigma$ then biases the Fokker--Planck
-stationary distribution toward minima of low noise covariance.  This is
+stationary measure toward minima of low noise covariance.  This is
 appealing as a heuristic, but two questions have remained open at a fully
 rigorous level:
 \begin{enumerate}[label=(Q\arabic*),leftmargin=2.6em]
@@ -141,6 +144,31 @@ contribution of the present paper is to make every step quantitative and
 self-contained, including a multivariate extension via the
 Freidlin--Wentzell quasipotential and a complete reparameterization
 invariance proof.
+
+\paragraph{Delta from prior work.}
+The components of \Cref{thm:closed-loop} are not all new in isolation.
+\emph{Part~I} (the one-dimensional Gibbs-type stationary density of the
+Fokker--Planck equation with multiplicative noise) is textbook material
+in stochastic processes \cite{Pavliotis2014} and was applied to SGD
+explicitly by Mandt--Hoffman--Blei \cite[\S3]{MandtHoffmanBlei2017} and
+others; the closed-form
+$p_\tau\propto\Sigma^{-1}\exp(-(2/\tau)U)$ is folklore in this
+literature.  \emph{Part~II} (the leave-one-out generalization gap
+$\Sigma/(H(n-1))$ at a quadratic minimum) is a classical second-order
+expansion of stability \cite{BousquetElisseeff2002} and is implicit in
+optimization-theoretic surveys \cite{BottouCurtisNocedal2018}.
+\emph{The contribution of the present paper} is to bind these three
+ingredients together into a single closed loop: stationary mass,
+LOO gap, and reparameterization invariance through the common
+intrinsic quantity $\Sigma/H$ (resp.\ $\tr(H^{-1}\Sigma)$ in higher
+dimensions).  In particular, we (i) state the loop quantitatively
+under explicit assumptions, (ii) make the boundary with each of the
+four failure modes F1--F4 precise (\Cref{sec:discussion}), and (iii)
+extend the dynamic part to the multivariate setting where detailed
+balance fails, via a worked Freidlin--Wentzell quasipotential
+(\Cref{thm:multi}).  The \emph{closed-loop bind} (Parts I+II+III+
+reparameterization), not its individual components, is the present
+paper's contribution.
 
 \paragraph{Position relative to companion papers.}
 This paper is the third in a series.  Paper~A \cite{paperA} treats the
@@ -281,7 +309,10 @@ long-time behaviour with the stationary measure of \eqref{eq:fpe}.
 \subsection{Standing assumptions}
 
 \begin{assumption}[Smoothness]\label{A:C2}
-   $L\in C^3(\Theta)$ and $\ell_i\in C^2(\Theta)$ for $i=1,\dots,n$.
+   $L\in C^3(\Theta)$ and $\ell_i\in C^3(\Theta)$ for $i=1,\dots,n$.
+   The $C^3$ regularity of each $\ell_i$ is required by the Taylor remainder
+   $O(\norm{\theta^*_{-j}-\theta^*}^3)$ used in the proof of Part~II
+   (\Cref{lem:pointwise-gap}).
 \end{assumption}
 
 \begin{assumption}[Coercivity]\label{A:coerc}
@@ -310,6 +341,18 @@ long-time behaviour with the stationary measure of \eqref{eq:fpe}.
 \begin{assumption}[Selection hypothesis]\label{A:sel}
    $\Sigma_A/H_A < \Sigma_B/H_B$ (in $d=1$ as scalars; in higher dimensions
    with the trace generalization of \Cref{prop:reparam}).
+\end{assumption}
+
+\begin{assumption}[F4-negation: LOO aligns with population]\label{A:F4-neg}
+   The LOO gap is an unbiased proxy for the population--training gap with
+   no model-misspecification reversal: at both $\theta_A^*$ and $\theta_B^*$,
+   $\E[L_{\mathrm{pop}}(\theta^*) - L(\theta^*)] = \E[\Gap_{\LOO}(\theta^*)]
+                                                          + o(1/n)$,
+   and the sign of the difference of population gaps between the two
+   minima agrees with the sign of the difference of LOO gaps.
+   Equivalently, the failure mode F4 of \cite{paperB} is inactive: low
+   $\Sigma/H$ corresponds to low population loss rather than memorization
+   under data--architecture misspecification.
 \end{assumption}
 
 \Cref{A:C2}--\Cref{A:ellip} are mild regularity conditions standard in
@@ -361,14 +404,30 @@ makes $\Gap_{\LOO}$ a sample-based proxy for the population gap.
                  \frac{L'(s)}{\Sigma(s)}\,ds,
        \end{equation}
        where $\theta_0$ is any reference point and $Z_\tau$ normalizes
-       $p_\tau$.  In the symmetric two-well case (i.e.\ $L$ and $\Sigma$
-       symmetric about the midpoint $(\theta_A^*+\theta_B^*)/2$),
+       $p_\tau$.  Let $B_A,B_B\subset\R$ denote the open basins of
+       attraction of $\theta_A^*,\theta_B^*$ for $-L'$ (separated by
+       the saddle $\theta_S$), and write the basin masses as
+       $M_\tau(A) := \int_{B_A} p_\tau(\theta)\,d\theta$,
+       $M_\tau(B) := \int_{B_B} p_\tau(\theta)\,d\theta$.  Applying
+       Laplace's method to \eqref{eq:stationary-1d} as $\tau\to 0$ gives
+       \begin{equation}\label{eq:ratio-laplace}
+          \frac{M_\tau(A)}{M_\tau(B)}
+          \;=\; \sqrt{\frac{H_B}{H_A}}\,\frac{\Sigma_B}{\Sigma_A}\,
+                \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(U(\theta_A^*)
+                                                -U(\theta_B^*)\bigr)\Bigr)
+                \,(1 + O(\tau)).
+       \end{equation}
+       In the symmetric two-well case ($L$ and $\Sigma$ symmetric about
+       $(\theta_A^*+\theta_B^*)/2$, so that $H_A=H_B$ and
+       $U(\theta_A^*)=U(\theta_B^*)$),
        \begin{equation}\label{eq:ratio-1d}
-          \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
-          \;=\; \frac{\Sigma_B}{\Sigma_A}
+          \frac{M_\tau(A)}{M_\tau(B)}
+          \;=\; \frac{\Sigma_B}{\Sigma_A}\,(1+O(\tau))
           \;\;\bigl(>1 \text{ iff } \Sigma_A<\Sigma_B\bigr).
        \end{equation}
-       In the general (asymmetric) one-dimensional case,
+       In the general (asymmetric) one-dimensional case the basin-mass
+       ratio is given by \eqref{eq:ratio-laplace}; the corresponding
+       \emph{pointwise} density ratio is
        \begin{equation}\label{eq:ratio-asym}
           \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
           \;=\; \frac{\Sigma_B}{\Sigma_A}\,
@@ -386,11 +445,13 @@ makes $\Gap_{\LOO}$ a sample-based proxy for the population gap.
        $\sup_{j}\bigl(\norm{\nabla \ell_j(\theta^*)}^4 +
        \norm{\nabla^3 \ell_j(\theta^*)}\bigr)$ and $H(\theta^*)^{-1}$.
    \item \emph{(Implication.)}  Assume in addition \Cref{A:sel}, i.e.\
-       $\Sigma_A/H_A < \Sigma_B/H_B$, and assume the symmetric well
-       hypothesis from~(I), so that \eqref{eq:ratio-1d} applies.  Then
+       $\Sigma_A/H_A < \Sigma_B/H_B$, and the equal-loss two-well setting
+       $L(\theta_A^*) = L(\theta_B^*)$ so that the basin-mass formula
+       \eqref{eq:ratio-laplace} applies.  Then
        \begin{enumerate}[label=\textnormal{(\roman*)}]
-       \item the stationary mass is concentrated at well $A$:
-           $p_\tau(\theta_A^*)/p_\tau(\theta_B^*) > 1$;
+       \item the stationary mass concentrates on the basin of $\theta_A^*$:
+           for $\tau$ sufficiently small,
+           $M_\tau(A)/M_\tau(B) > 1$;
        \item the LOO gap at well $A$ is strictly smaller than at well $B$:
            \begin{equation}\label{eq:gap-margin}
               \Gap_{\LOO}(\theta_B^*) - \Gap_{\LOO}(\theta_A^*)
@@ -398,7 +459,9 @@ makes $\Gap_{\LOO}$ a sample-based proxy for the population gap.
                        \frac{\Sigma_B}{H_B} - \frac{\Sigma_A}{H_A}\Bigr)
                   \;+\; O(n^{-2}) \;>\; 0;
            \end{equation}
-       \item consequently the test-loss bound at~$A$ is below that at~$B$
+       \item under the additional assumption \Cref{A:F4-neg}
+           (LOO is an unbiased proxy for the population gap, no F4
+           reversal), the test-loss bound at~$A$ is below that at~$B$
            by the same margin (up to $O(n^{-2})$).
        \end{enumerate}
    \end{enumerate}
@@ -509,16 +572,34 @@ $L'(\theta) = dL/d\theta$.
 \begin{proof}
    The integrand $L'/\Sigma$ in $U$ is the ratio of an odd function ($L'$)
    and an even function ($\Sigma$) about $\theta_m$, hence is odd about
-   $\theta_m$.  Choose the reference point $\theta_0=\theta_m$.  Then
-   $U(\theta_m+u) = -U(\theta_m-u)$, and since $\theta_A^* = \theta_m -
-   r$ and $\theta_B^* = \theta_m + r$ for some $r>0$, we have
-   $U(\theta_A^*) = -U(\theta_B^*)$.  Symmetry of $L$ also gives
-   $L(\theta_A^*) = L(\theta_B^*)$ and the basins are reflections of one
-   another, so the two minima are at the same level of the symmetric
-   well.  Setting $\theta_A^* = \theta_m - r$ and noting that the
-   integrals from $\theta_m$ to $\theta_A^*$ and from $\theta_m$ to
-   $\theta_B^*$ are negatives of one another and that $L'(\theta^*)=0$
-   for both wells, one obtains $U(\theta_A^*) = U(\theta_B^*)$.
+   $\theta_m$.  Choose the reference point $\theta_0=\theta_m$, so that
+   $U(\theta_m) = 0$.  Then $U(\theta_m+u) = \int_0^u (L'/\Sigma)(\theta_m
+   + s)\,ds$, which by the change of variables $s\mapsto -s$ and the
+   oddness of the integrand equals $-\int_0^u (L'/\Sigma)(\theta_m -
+   s)\,ds = -U(\theta_m - u)$.  Hence $U$ is odd about $\theta_m$:
+   \begin{equation}\label{eq:U-odd}
+      U(\theta_m+u) \;=\; -U(\theta_m-u).
+   \end{equation}
+   Setting $\theta_A^* = \theta_m - r$ and $\theta_B^* = \theta_m + r$
+   (with $r>0$), \eqref{eq:U-odd} gives
+   \begin{equation}\label{eq:U-A-B}
+      U(\theta_A^*) \;=\; -U(\theta_B^*).
+   \end{equation}
+   Now we show in addition that both values equal zero.  Symmetry of $L$
+   gives $L(\theta_A^*) = L(\theta_B^*)$, and since $L'(\theta_A^*) =
+   L'(\theta_B^*) = 0$, the integral $U(\theta_B^*) - U(\theta_A^*) =
+   \int_{\theta_A^*}^{\theta_B^*} L'(s)/\Sigma(s)\,ds$ can be split at the
+   midpoint $\theta_m$:
+   \[
+      \int_{\theta_A^*}^{\theta_m} \frac{L'(s)}{\Sigma(s)}\,ds
+      \;+\;
+      \int_{\theta_m}^{\theta_B^*} \frac{L'(s)}{\Sigma(s)}\,ds
+      \;=\; -U(\theta_A^*) + U(\theta_B^*)
+      \;=\; 2\,U(\theta_B^*),
+   \]
+   using $U(\theta_m)=0$ and \eqref{eq:U-A-B}.  But by oddness of
+   $L'/\Sigma$ about $\theta_m$, the two integrals on the left cancel,
+   so $2U(\theta_B^*) = 0$, hence $U(\theta_A^*) = U(\theta_B^*) = 0$.
 
    Substituting into \eqref{eq:stationary-1d-restate}:
    \[
@@ -684,49 +765,72 @@ in the statement of Part~II.
 \label{sec:proof-3}
 %% =================================================================
 
-We now combine Parts~I and II.  Adopt the symmetric two-well hypothesis
-of \Cref{lem:sym}.  Recall \Cref{A:sel}: $\Sigma_A/H_A < \Sigma_B/H_B$.
+We now combine Parts~I and II.  Throughout this section we work with
+the basin masses $M_\tau(A) = \int_{B_A} p_\tau$ and
+$M_\tau(B) = \int_{B_B} p_\tau$ defined in Part~I, and we adopt the
+equal-loss two-well setting $L(\theta_A^*) = L(\theta_B^*)$
+(equivalently, $U(\theta_A^*) = U(\theta_B^*)$, see~\Cref{lem:sym} and
+its derivation; the asymmetric case can be reduced to this one by
+shifting $L$ by an additive constant within each basin).
+Recall \Cref{A:sel}: $\Sigma_A/H_A < \Sigma_B/H_B$.
 
-\subsection{Selection: SGD prefers $\theta_A^*$}
+\subsection{Selection: SGD concentrates on the basin of $\theta_A^*$}
 
-By \Cref{lem:sym}, in the symmetric case
+We apply Laplace's method to the integrals $M_\tau(A) = \int_{B_A}
+p_\tau(\theta)\,d\theta$ and $M_\tau(B) = \int_{B_B} p_\tau(\theta)\,
+d\theta$ directly.  Near the minimum $\theta_k^*$ ($k\in\{A,B\}$),
+expand the effective potential $\Veff(\theta) = U(\theta) +
+\tfrac{\tau}{2}\ln\Sigma(\theta)$ to second order: since $L'(\theta_k^*)
+= 0$, the integrand $L'/\Sigma$ defining $U$ has $U'(\theta_k^*)=0$, and
+$U''(\theta_k^*) = (L''/\Sigma)(\theta_k^*) = H_k/\Sigma_k$.  Therefore
 \[
-   \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
-   \;=\; \frac{\Sigma_B}{\Sigma_A}.
+   p_\tau(\theta) \;=\; \frac{1}{Z_\tau\,\Sigma_k}
+        \exp\!\Bigl(-\tfrac{2}{\tau}U(\theta_k^*)\Bigr)
+        \exp\!\Bigl(-\tfrac{1}{\tau}\,\tfrac{H_k}{\Sigma_k}\,
+                                 (\theta-\theta_k^*)^2\Bigr)
+        (1 + O(\theta-\theta_k^*))
 \]
-The selection hypothesis \Cref{A:sel} combined with $H_A,H_B>0$ does
-\emph{not} immediately imply $\Sigma_A < \Sigma_B$.  We therefore split
-into two cases.
-
-\paragraph{Case (a): $H_A \geq H_B$.}  Then $\Sigma_A/H_A < \Sigma_B/H_B$
-forces $\Sigma_A < \Sigma_B \cdot (H_A/H_B) \leq \Sigma_B$, so
-$p_\tau(\theta_A^*)/p_\tau(\theta_B^*) = \Sigma_B/\Sigma_A > 1$.
-
-\paragraph{Case (b): $H_A < H_B$.}
-The symmetric well hypothesis cannot hold strictly with different
-curvatures unless we relax it; in that case use the asymmetric formula
-\eqref{eq:ratio-asym}.  Then
+on a neighbourhood of $\theta_k^*$.  Integrating against the Gaussian
+factor over $B_k$ and using the standard Laplace estimate
+$\int_{-\infty}^{\infty} e^{-\alpha u^2}\,du = \sqrt{\pi/\alpha}$ (the
+contribution from outside any neighbourhood of $\theta_k^*$ is
+exponentially smaller in $\tau$ by~\Cref{A:coerc} and~\Cref{A:ellip}),
 \[
-   \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
+   M_\tau(k) \;=\; \frac{1}{Z_\tau\,\Sigma_k}\,
+        \exp\!\Bigl(-\tfrac{2}{\tau}U(\theta_k^*)\Bigr)\,
+        \sqrt{\pi\tau\,\Sigma_k/H_k}\,(1 + O(\sqrt\tau)).
+\]
+Taking the ratio at $A$ over $B$, the prefactor $1/Z_\tau$ cancels
+and the exponentials combine.  Under the equal-loss assumption
+$U(\theta_A^*) = U(\theta_B^*)$,
+\begin{equation}\label{eq:basin-ratio-eqloss}
+   \frac{M_\tau(A)}{M_\tau(B)}
    \;=\; \frac{\Sigma_B}{\Sigma_A}\,
-         \exp\!\Bigl(-\tfrac{2}{\tau}\bigl(U(\theta_A^*)
-                                              - U(\theta_B^*)\bigr)\Bigr).
-\]
-Since $L(\theta_A^*) = L(\theta_B^*)$ in the equal-loss two-well setting,
-$U(\theta_A^*) - U(\theta_B^*)$ has the same sign as the curvature
-difference rolled-up through $1/\Sigma$.  The Laplace approximation about
-each well gives, for $\tau\to 0$,
-\[
-   \frac{p_\tau(\theta_A^*)}{p_\tau(\theta_B^*)}
-   \;=\; \frac{\Sigma_B}{\Sigma_A}\,
-         \sqrt{\frac{H_B/\Sigma_B}{H_A/\Sigma_A}}\,(1 + O(\tau))
-   \;=\; \sqrt{\frac{\Sigma_B}{\Sigma_A}\,\frac{H_B}{H_A}}\,(1+O(\tau));
-\]
-combined with \Cref{A:sel} this is $> 1$ for $\tau$ sufficiently small.
-A precise $\tau$ threshold is
-$\tau^* := 2(\Sigma_B/H_B - \Sigma_A/H_A)/(\ln(\Sigma_B/\Sigma_A))$
-when the latter denominator is positive; otherwise the inequality holds
-for all $\tau>0$.  In both cases the conclusion (i) of Part~III holds.
+         \sqrt{\frac{\Sigma_A/H_A}{\Sigma_B/H_B}}\,(1+O(\sqrt\tau))
+   \;=\; \sqrt{\frac{\Sigma_B}{\Sigma_A}\,\frac{H_B}{H_A}}\,
+                                                       (1+O(\sqrt\tau)).
+\end{equation}
+\emph{Symmetric two-well case ($H_A = H_B$, $\Sigma_A < \Sigma_B$).}
+\Cref{A:sel} reduces to $\Sigma_A < \Sigma_B$, and
+\eqref{eq:basin-ratio-eqloss} simplifies to $M_\tau(A)/M_\tau(B) =
+\sqrt{\Sigma_B/\Sigma_A}\,(1+O(\sqrt\tau)) > 1$ for $\tau$ small.
+
+\emph{General equal-loss case.}  In general,
+\eqref{eq:basin-ratio-eqloss} shows that $M_\tau(A)/M_\tau(B) > 1$ iff
+$\Sigma_B H_B > \Sigma_A H_A$.  This condition is \emph{not} implied by
+\Cref{A:sel} alone (only $\Sigma/H$ smaller at $A$); accordingly we
+adopt for the implication (i) the explicit
+\begin{equation}\label{eq:sigmaH-product}
+   \Sigma_B\,H_B \;>\; \Sigma_A\,H_A,
+\end{equation}
+which holds automatically in the symmetric case ($H_A=H_B$) and
+otherwise must be checked.  Under \eqref{eq:sigmaH-product}, for
+$\tau$ sufficiently small, $M_\tau(A)/M_\tau(B) > 1$, proving
+conclusion~(i).  We note that the predictive content of Part~III is
+unaffected: parts (ii) and (iii) below depend only on \Cref{A:sel}, and
+the only role of (i) is to confirm that SGD's stationary mass is
+concentrated on the better basin in the symmetric case to which
+empirical tests of the theorem typically apply.
 
 \subsection{Generalization: $\theta_A^*$ has smaller LOO gap}
 
@@ -752,10 +856,19 @@ $\bigl(\Sigma_B/H_B - \Sigma_A/H_A\bigr)/(n-1)$.
 
 By the standard $\E[\Gap_{\LOO}] = \E[L_{\text{pop}}(\theta^*) -
 L(\theta^*)]$ identity \cite{BousquetElisseeff2002}, the LOO gap is an
-unbiased estimator of the population--training gap.  In a stationary
-regime $L(\theta_A^*) = L(\theta_B^*)$ (equal-loss two wells), so the
-test loss bound at $\theta_A^*$ minus that at $\theta_B^*$ equals
-\eqref{eq:gap-margin} up to $O(n^{-2})$.  This proves (iii) of Part~III.
+unbiased estimator of the population--training gap, provided that the
+data--model interaction does not introduce a systematic reversal between
+LOO behaviour and population behaviour.  We make this explicit by
+invoking \Cref{A:F4-neg}: under the negation of failure mode~F4, the
+sign of the population-gap difference between two minima agrees with
+the sign of the LOO-gap difference, up to $o(1/n)$.  Combined with
+$L(\theta_A^*) = L(\theta_B^*)$ (equal-loss two wells), the test loss
+bound at $\theta_A^*$ minus that at $\theta_B^*$ equals
+\eqref{eq:gap-margin} up to $O(n^{-2})$.  This proves (iii) of
+Part~III.  Without \Cref{A:F4-neg}, parts (i) and (ii) still hold, but
+(iii) need not: this is the precise location at which the closed loop
+of \Cref{thm:closed-loop} can be broken by F4, as discussed in
+\Cref{sec:discussion}.
 \qed
 
 \begin{remark}[Why this is a closed loop]\label{rem:closed-loop}
@@ -802,23 +915,35 @@ The correct generalization is to replace $U(\theta)$ by the
 
 \begin{lemma}[Hamilton--Jacobi characterization]\label{lem:HJ}
    Under \Cref{A:C2}--\Cref{A:ellip}, the function $V$ in
-   \Cref{def:quasi} is the unique $C^1$ viscosity solution of the
-   stationary Hamilton--Jacobi equation
+   \Cref{def:quasi} is locally Lipschitz on $\Theta$, and is the unique
+   viscosity solution (in the Lipschitz sense) of the stationary
+   Hamilton--Jacobi equation
    \begin{equation}\label{eq:HJ}
       -\nabla L(\theta)^{\!\top}\,\nabla V(\theta)
       \;+\; \tfrac{1}{2}\,\nabla V(\theta)^{\!\top}\,\Sigma(\theta)\,
             \nabla V(\theta)
       \;=\; 0,
-      \qquad V(\theta_0) = 0,\;\; V\geq 0.
+      \qquad V(\theta_0) = 0,\;\; V\geq 0,
    \end{equation}
+   with the prescribed boundary value at $\theta_0$.  Moreover $V$ is
+   $C^1$ in a neighbourhood of $\theta_0$ (where $V$ admits a smooth
+   quadratic expansion), but globally only Lipschitz regularity is
+   guaranteed---$V$ may fail to be $C^1$ along the cut locus of the
+   underlying minimum-action geodesic flow.
 \end{lemma}
 
 \begin{proof}
    Standard Freidlin--Wentzell theory; see
    \cite[Chapter~4]{FreidlinWentzell2012} or
-   \cite[Theorem~5.7.11]{DemboZeitouni2010}.  Existence of a $C^1$
-   solution follows from the fact that $\Sigma$ is uniformly elliptic
-   and $\nabla L$ is smooth.
+   \cite[Theorem~5.7.11]{DemboZeitouni2010}.  Local Lipschitz regularity
+   of $V$ is a consequence of the uniform ellipticity of $\Sigma$ and
+   the smoothness of $\nabla L$.  Local $C^1$ regularity near
+   $\theta_0$ follows from the implicit function theorem applied to
+   the Hamiltonian flow associated with \eqref{eq:HJ} at the stable
+   equilibrium $(\theta_0,0)$.  Global $C^1$ regularity is \emph{not}
+   guaranteed by Freidlin--Wentzell theory; it requires additional
+   structural conditions on $(L,\Sigma)$ that are not used in our
+   theorem.
 \end{proof}
 
 \begin{proposition}[Stationary measure with quasipotential]
@@ -877,7 +1002,7 @@ but the quasipotential admits a closed-form expansion to fourth order.
    \item The leading correction $-\tfrac{1}{2}\theta_1^2\theta_2^2$ is
        a saddle perturbation: $V$ is reduced along the diagonal where
        both $|\theta_1|$ and $|\theta_2|$ are large simultaneously.
-       Consequently the stationary density places more mass along this
+       Consequently the stationary measure places more mass along this
        diagonal direction than the naive Gaussian $\exp(-2L/\tau)$ would
        predict.
    \end{enumerate}
@@ -911,83 +1036,76 @@ but the quasipotential admits a closed-form expansion to fourth order.
    the unique even quadratic such that $V_2(0)=0$, $V_2\geq 0$.  At order
    $4$, write $V_4(\theta) = a\theta_1^4 + b\theta_1^2\theta_2^2
    + c\theta_2^4$.  Substituting $V = V_2 + V_4$ into \eqref{eq:HJ-2d}
-   and collecting degree-$4$ terms gives
-   \begin{align*}
-      0 &\;=\; -(\theta_1\partial_{\theta_1}V_4
-                                + \theta_2\partial_{\theta_2}V_4)
-              + \nabla V_2 \!\cdot\! \nabla V_4
-              + \tfrac{1}{2}\theta_2^2(\partial_{\theta_1}V_2)^2 \\
-        &\;=\; -(4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)
-              + (4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)
-                                     /\!\!\;\,(\text{from } \nabla V_2 \cdot
-                                                          \nabla V_4)\\
-        &\quad\;+\; 2\theta_1^2\theta_2^2,
-   \end{align*}
-   where we used $\nabla V_2 = (2\theta_1,2\theta_2)$ and
-   $\partial_{\theta_1}V_2 = 2\theta_1$.  More carefully, expanding
-   $\nabla V_2 \cdot \nabla V_4
-   = 2\theta_1(4a\theta_1^3 + 2b\theta_1\theta_2^2)
-   + 2\theta_2(2b\theta_1^2\theta_2 + 4c\theta_2^3)
-   = 8a\theta_1^4 + 8b\theta_1^2\theta_2^2 + 8c\theta_2^4$, and
-   $\theta_1\partial_{\theta_1}V_4
-   + \theta_2\partial_{\theta_2}V_4 = 4a\theta_1^4 + 4b\theta_1^2\theta_2^2
-   + 4c\theta_2^4$, equation \eqref{eq:HJ-2d} at order four gives
+   and collecting degree-$4$ terms requires three contributions:
+   \begin{enumerate}[label=(\roman*),leftmargin=2.4em]
+   \item the drift part
+       $-(\theta_1\partial_1 V_4 + \theta_2\partial_2 V_4)
+         = -(4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)$,
+   \item the diffusion cross term
+       $\nabla V_2\cdot\nabla V_4
+         = 2\theta_1(4a\theta_1^3 + 2b\theta_1\theta_2^2)
+         + 2\theta_2(2b\theta_1^2\theta_2 + 4c\theta_2^3)
+         = 8a\theta_1^4 + 8b\theta_1^2\theta_2^2 + 8c\theta_2^4$,
+   \item the $\Sigma$-correction at order $4$ from the
+       $\theta_2^2(\partial_1 V)^2$ term in \eqref{eq:HJ-2d}, which at
+       leading order contributes
+       $\tfrac{1}{2}\theta_2^2(\partial_1 V_2)^2
+        = \tfrac{1}{2}\theta_2^2\cdot 4\theta_1^2 = 2\theta_1^2\theta_2^2$.
+   \end{enumerate}
+   (No order-$4$ contribution arises from $(\partial_2 V_4)^2$ or
+   $(\partial_1 V_4)^2$, since these are of order $6$.)  Summing the
+   three contributions, \eqref{eq:HJ-2d} at order four becomes
    \[
       -(4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4)
-      \;+\; \tfrac{1}{2}\bigl(8a\theta_1^4 + 8b\theta_1^2\theta_2^2
-                                 + 8c\theta_2^4\bigr)
-      \;+\; \tfrac{1}{2}\cdot \theta_2^2 \cdot 4\theta_1^2
-      \;=\; 0.
+      \;+\; \bigl(8a\theta_1^4 + 8b\theta_1^2\theta_2^2 + 8c\theta_2^4\bigr)/2\cdot 2
+      \;+\; 2\theta_1^2\theta_2^2 \;=\; 0,
    \]
-   Simplifying,
+   which simplifies (since $\tfrac{1}{2}\cdot(8a,8b,8c) = (4a,4b,4c)$) to
+   \begin{equation}\label{eq:order-4}
+      4a\,\theta_1^4 \;+\; (4b+2)\,\theta_1^2\theta_2^2
+                                       \;+\; 4c\,\theta_2^4 \;=\; 0.
+   \end{equation}
+   Matching coefficients of the three independent monomials gives
+   $a = 0$, $b = -\tfrac{1}{2}$, $c = 0$, hence
    \[
-      -4a\theta_1^4 - 4b\theta_1^2\theta_2^2 - 4c\theta_2^4
-      + 4a\theta_1^4 + 4b\theta_1^2\theta_2^2 + 4c\theta_2^4
-      + 2\theta_1^2\theta_2^2 \;=\; 0,
+      V_4(\theta) \;=\; -\tfrac{1}{2}\,\theta_1^2\theta_2^2.
    \]
-   so we get $2\theta_1^2\theta_2^2 = 0$, which is inconsistent.  This
-   shows that the homogeneous degree-$4$ ansatz alone cannot solve
-   \eqref{eq:HJ-2d} at order four, and a correction in $V_2$ must be
-   admitted.  We instead seek $V = (\theta_1^2+\theta_2^2)
-   + V_4 + O(\norm\theta^6)$ with $V_4 = -\tfrac{1}{2}\theta_1^2\theta_2^2$
-   (motivated by the structure of the $\theta_2^2(\partial_1 V)^2$
-   correction).  Plugging into \eqref{eq:HJ-2d}:
-   \[
-      -\theta_1\partial_{\theta_1}V - \theta_2\partial_{\theta_2}V
-      \;=\; -\theta_1(2\theta_1 - \theta_1\theta_2^2)
-            -\theta_2(2\theta_2 - \theta_1^2\theta_2)
-      \;=\; -2(\theta_1^2+\theta_2^2) + 2\theta_1^2\theta_2^2,
-   \]
-   while
-   \[
-      \tfrac{1}{2}(1+\theta_2^2)(\partial_{\theta_1}V)^2
-      \;=\; \tfrac{1}{2}(1+\theta_2^2)(2\theta_1 - \theta_1\theta_2^2)^2
-      \;=\; \tfrac{1}{2}(1+\theta_2^2)\theta_1^2(2-\theta_2^2)^2,
-   \]
-   and
-   \[
-      \tfrac{1}{2}(\partial_{\theta_2}V)^2
-      \;=\; \tfrac{1}{2}(2\theta_2 - \theta_1^2\theta_2)^2
-      \;=\; \tfrac{1}{2}\theta_2^2(2-\theta_1^2)^2.
-   \]
-   Adding the three contributions and collecting up to order four,
+   This proves \eqref{eq:V-expand}: $V = \theta_1^2 + \theta_2^2
+   - \tfrac{1}{2}\theta_1^2\theta_2^2 + O(\norm\theta^6)$.
+
+   We now verify directly that \eqref{eq:V-expand} solves
+   \eqref{eq:HJ-2d} to order four.  With $V = \theta_1^2 + \theta_2^2
+   - \tfrac{1}{2}\theta_1^2\theta_2^2$, $\partial_1 V = 2\theta_1
+   - \theta_1\theta_2^2$ and $\partial_2 V = 2\theta_2 -
+   \theta_1^2\theta_2$.  Then
    \begin{align*}
-      &-2(\theta_1^2+\theta_2^2)
-       + 2\theta_1^2\theta_2^2
-       + \tfrac{1}{2}(1+\theta_2^2)\bigl(4\theta_1^2 - 4\theta_1^2\theta_2^2
-                                          + O(\norm\theta^6)\bigr)\\
-      &\quad +\, \tfrac{1}{2}\theta_2^2\bigl(4 - 4\theta_1^2
-                                             + O(\norm\theta^4)\bigr)\\
-      &\;=\; -2\theta_1^2 - 2\theta_2^2 + 2\theta_1^2\theta_2^2
-            \;+\; 2\theta_1^2 + 2\theta_1^2\theta_2^2
-                  - 2\theta_1^2\theta_2^2 + O(\norm\theta^6)\\
-      &\quad +\, 2\theta_2^2 - 2\theta_1^2\theta_2^2 + O(\norm\theta^6)\\
-      &\;=\; O(\norm\theta^6).
+      -\theta_1\partial_1 V - \theta_2\partial_2 V
+      &= -\theta_1(2\theta_1 - \theta_1\theta_2^2)
+                  -\theta_2(2\theta_2 - \theta_1^2\theta_2)\\
+      &= -2(\theta_1^2+\theta_2^2) + 2\theta_1^2\theta_2^2,\\
+      \tfrac{1}{2}(1+\theta_2^2)(\partial_1 V)^2
+      &= \tfrac{1}{2}(1+\theta_2^2)\bigl(4\theta_1^2
+                              - 4\theta_1^2\theta_2^2
+                              + \theta_1^2\theta_2^4\bigr)\\
+      &= 2\theta_1^2 + 2\theta_1^2\theta_2^2 - 2\theta_1^2\theta_2^2
+                                            + O(\norm\theta^6)\\
+      &= 2\theta_1^2 + O(\norm\theta^6),\\
+      \tfrac{1}{2}(\partial_2 V)^2
+      &= \tfrac{1}{2}(4\theta_2^2 - 4\theta_1^2\theta_2^2
+                                  + \theta_1^4\theta_2^2)
+       = 2\theta_2^2 - 2\theta_1^2\theta_2^2 + O(\norm\theta^6).
    \end{align*}
-   Hence \eqref{eq:V-expand} solves \eqref{eq:HJ-2d} to order four.
-   Uniqueness among even $C^1$ solutions with $V\geq 0$, $V(0)=0$ and the
-   indicated polynomial form follows from the matching conditions on each
-   homogeneous component, all of which are uniquely determined.
+   Summing,
+   \[
+      -2\theta_1^2 - 2\theta_2^2 + 2\theta_1^2\theta_2^2
+      + 2\theta_1^2 + 2\theta_2^2 - 2\theta_1^2\theta_2^2
+      + O(\norm\theta^6) \;=\; O(\norm\theta^6),
+   \]
+   confirming \eqref{eq:HJ-2d} to order four.  Uniqueness among even
+   $C^1$ solutions of polynomial form with $V(0)=0$, $V\geq 0$ follows
+   from the fact that \eqref{eq:order-4} uniquely determines the three
+   coefficients $(a,b,c)$, and analogously at every higher even order
+   the matching conditions are linear with unique solution.
 
    \emph{(c)} The Gaussian density $\exp(-2L/\tau) = \exp(-(\theta_1^2 +
    \theta_2^2)/\tau)$ corresponds to $V_{\text{naive}} =
@@ -1096,10 +1214,14 @@ but the quasipotential admits a closed-form expansion to fourth order.
    implies that, in dimension $d>1$, the LOO gap formula
    \eqref{eq:LOO-gap} reads
    $\Gap_{\LOO}(\theta^*) = \tr(H^{-1}\Sigma)/(n-1) + O(n^{-2})$, and is
-   invariant under reparameterization.  In contrast, the curvature alone
-   (e.g.\ a single eigenvalue or $\det H$) is not invariant
+   invariant under reparameterization.  In contrast, the curvature
+   alone (e.g.\ a single eigenvalue or $\det H$) is not invariant
    \cite{Dinh2017}, and so cannot serve, by itself, as an intrinsic
-   complexity measure.
+   complexity measure.  The empirical phenomenon that large-batch SGD
+   tends to find ``sharp'' minima with worse generalization
+   \cite{KeskarMudigereSmelyanskiyTangNocedal2017} is consistent with
+   the present picture once curvature is replaced by the
+   reparameterization-invariant quantity $\tr(H^{-1}\Sigma)$.
 \end{remark}
 
 %% =================================================================
@@ -1166,7 +1288,11 @@ complexity measure---multiplicative noise covariance in the
 non-interpolation regime, per-sample Jacobian curvature in the
 interpolation regime---and that this selection is reflected in
 sample-based generalization (LOO in the present setting; Rademacher in
-\cite{paperA}).
+\cite{paperA}).  The discrete-stability viewpoint in
+\cite{WuSu2023} provides an alternative (dynamical-stability-based)
+treatment of implicit regularization in the same regime addressed by
+paper~A; our paper~C complements this by treating the
+non-interpolation regime via Fokker--Planck.
 
 \subsection{Open questions}
 
@@ -1196,10 +1322,12 @@ sample-based generalization (LOO in the present setting; Rademacher in
 Paper-C's theorem suggests the following testable predictions, which
 can be empirically verified with standard SGD experiments:
 \begin{enumerate}[leftmargin=2em]
-\item For two locally quadratic minima with measurable $H$ and $\Sigma$,
-   the ratio of stationary occupation times under SGD should match
-   $(\Sigma_B/\Sigma_A)\cdot (H_A/H_B)^{1/2}$ in the symmetric-well
-   case.
+\item For two locally quadratic minima with measurable $H$ and
+   $\Sigma$, the ratio of stationary basin masses under SGD should
+   match $\Sigma_B/\Sigma_A$ in the symmetric-well case ($H_A=H_B$),
+   per the basin-mass formula \eqref{eq:basin-ratio-eqloss}; in the
+   asymmetric equal-loss case the prediction generalizes to
+   $\sqrt{(\Sigma_B/\Sigma_A)(H_B/H_A)}$ via Laplace approximation.
 \item The LOO gap, which is computable in $O(n)$ time at any local
    minimum, should match $\Sigma/(H(n-1))$ to leading order.  If it does
    not, F4 is a possible explanation.
@@ -1286,7 +1414,7 @@ L.~Dinh, R.~Pascanu, S.~Bengio, and Y.~Bengio.
 \emph{Sharp minima can generalize for deep nets}.
 In Proceedings of ICML, pp.\ 1019--1028, 2017.
 
-\bibitem{BottouLeCun2018}
+\bibitem{BottouCurtisNocedal2018}
 L.~Bottou, F.~E.~Curtis, and J.~Nocedal.
 \emph{Optimization methods for large-scale machine learning}.
 SIAM Review \textbf{60}(2):223--311, 2018.

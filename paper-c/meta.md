@@ -35,8 +35,8 @@ strictly better, with explicit margin $(\Sigma_B/H_B - \Sigma_A/H_A)/(n-1)
 + O(n^{-2})$.
 
 ## Page count / line count
-- LaTeX source: 1308 lines
-- Compiled PDF: 14 pages
+- LaTeX source: 1436 lines
+- Compiled PDF: 16 pages
 
 ## Target journals (ranked)
 
@@ -56,6 +56,8 @@ strictly better, with explicit margin $(\Sigma_B/H_B - \Sigma_A/H_A)/(n-1)
 - Secondary: 68T07 — Artificial neural networks and deep learning
 - Secondary: 49L25 — Viscosity solutions to Hamilton–Jacobi equations
 - Secondary: 60J60 — Diffusion processes
+- Secondary: 65C05 — Monte Carlo methods (numerical SDE simulation,
+  testable predictions in §10.4)
 
 ## Submission strategy
 
@@ -81,7 +83,9 @@ strictly better, with explicit margin $(\Sigma_B/H_B - \Sigma_A/H_A)/(n-1)
 - [ ] **Cross-reference paper-A and paper-B.**  The `\bibitem{paperA}` and
       `\bibitem{paperB}` entries currently use placeholder titles
       ("Companion paper, 2026").  Once paper-A and paper-B have arXiv IDs
-      or DOIs, update with full citations.
+      or DOIs, update with full citations.  **TODO**: paperA / paperB
+      are TODO placeholders (no DOI / arXiv yet); will be filled in
+      when companion papers are submitted.
 - [ ] **Empirical validation (optional).**  The paper makes three testable
       predictions in §10.4.  Adding even small-scale empirical
       verification (e.g.\ on a synthetic two-well loss landscape) would
